@@ -1,5 +1,3 @@
-require 'geocoder'
-
 class Cache
 	include DataMapper::Resource
 	property :id,   Serial
@@ -19,6 +17,9 @@ class Cache
 	property :hidden, Date
 	property :last_update, DateTime
 	property :content, Text, :length => 1*1024*1024
+	property :short_desc, Text
+	property :long_desc, Text
+	property :hints, Text
 
 	belongs_to :cache_size
 	belongs_to :cache_type
@@ -95,6 +96,21 @@ class Cache
 			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
 			body[start..(start+stop)].join.gsub(/A cache by/, "").remove_tags.remove_spaces
 		)
+		result[:short_desc] = (
+			start = body.index{|line| line.match(/"ctl00_ContentBody_ShortDescription"/)}
+			stop = body[start..-1].index{|line| line.match(/<\/span>/)}
+			body[start..(start+stop)].map(&:strip).join("\n").strip_tags.strip
+		)
+		result[:long_desc] = (
+			start = body.index{|line| line.match(/"ctl00_ContentBody_LongDescription"/)}
+			stop = body[start..-1].index{|line| line.match(/<\/span>/)}
+			body[start..(start+stop)].map(&:strip).join("\n").strip_tags.strip
+		)
+		result[:hints] = (
+			start = body.index{|line| line.match(/<div id="div_hint"/)}
+			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
+			body[start..(start+stop)].map(&:strip).join("\n").strip_tags.strip
+		)
 		result[:last_update] = DateTime.now
 		result[:found_by_me] = !body.select{|line| line.match(/"ctl00_ContentBody_hlFoundItLog"/)}.empty?
 		result
@@ -131,16 +147,59 @@ class Cache
 		request = HttpInterface.get_page(url)
 		body = request.body.force_encoding("UTF-8").scan(/guid=[[:alnum:]].*/).map{|x| x.gsub(/guid=/, "").gsub(/".*/, "")}
 	end
+
+	def to_gpx
+%Q[  <wpt lat="#{self.latitude}" lon="#{self.longitude}">
+    <time>#{self.hidden.to_datetime}</time>
+    <name>#{self.gcid}</name>
+    <desc>#{self.name}, #{self.cache_type.name} (#{self.difficulty}/#{self.terrain})</desc>
+    <url>http://www.geocaching.com/seek/cache_details.aspx?guid=#{self.guid}</url>
+    <urlname>#{self.name}</urlname>
+    <sym>Geocache</sym>
+    <type>Geocache|#{self.cache_type.name} Cache</type>
+    <groundspeak:cache id="25805" available="#{!self.disabled}" archived="#{self.archived}" xmlns:groundspeak="http://www.groundspeak.com/cache/1/0">
+      <groundspeak:name>#{self.name}</groundspeak:name>
+      <groundspeak:placed_by>#{self.owner}</groundspeak:placed_by>
+      <groundspeak:owner id="13197">Cip</groundspeak:owner>
+      <groundspeak:type>#{self.cache_type.name} Cache</groundspeak:type>
+      <groundspeak:container>#{self.cache_size.name}</groundspeak:container>
+      <groundspeak:difficulty>#{self.difficulty}</groundspeak:difficulty>
+      <groundspeak:terrain>#{self.terrain}</groundspeak:terrain>
+      <groundspeak:country>#{Cache.first.location.split(", ").last}</groundspeak:country>
+      <groundspeak:state>#{Cache.first.location.split(", ").first}</groundspeak:state>
+      <groundspeak:short_description html="True">#{self.short_desc}</groundspeak:short_description>
+      <groundspeak:long_description html="True">#{self.long_desc}</groundspeak:long_description>
+      <groundspeak:encoded_hints>#{self.hints.rot13}</groundspeak:encoded_hints>
+    </groundspeak:cache>
+  </wpt>].force_encoding("UTF-8")
+	end
 end
 
 class String
 	def remove_tags
 		self.gsub(/<[^>]*>/, '')
 	end
+	def strip_tags
+		self.sub(/^<[^>]*>/, "").sub(/<[^>]*>$/, "")
+	end
 	def remove_spaces
 		self.gsub(/[[:space:]]/, '')
 	end
 	def substitude_urls
 		self.gsub(/src=(["'])([^h][^t][^t][^p][^s]?[^:])/, 'src=\1http://www.geocaching.com/seek/\2').gsub(/\/seek\/\//, "/").gsub(/\/seek\/\.\.\//, "/")
+	end
+	def rot13
+		self.rot(13)
+	end
+	def rot(nr = 13)
+		self.each_byte.map do |byte|
+			case byte
+			when 97..122
+				byte = ((byte - 97 + nr) % 26) + 97
+			when 65..90
+				byte = ((byte - 65 + nr) % 26) + 65
+			end
+			byte
+		end.pack('c*')
 	end
 end

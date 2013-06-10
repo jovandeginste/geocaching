@@ -1,3 +1,5 @@
+require 'geocoder'
+
 class Location
 	Rkm = 6371
 	RAD_PER_DEG = 0.017453293  #  PI/180
@@ -6,6 +8,10 @@ class Location
 
 	def initialize(*params)
 		self.parse(*params)
+	end
+
+	def to_s
+		"#{self.latitude}, #{self.longitude}"
 	end
 
 	def to_city
@@ -58,6 +64,7 @@ class Location
 				   end
 		Location.new(city_coordinates)
 	end
+	
 	def distance_from(other_location)
 		lat1, lon1 = self.latitude, self.longitude
 		lat2, lon2 = other_location.latitude, other_location.longitude
@@ -74,9 +81,8 @@ class Location
 		lat2_rad = lat2 * RAD_PER_DEG
 		lon2_rad = lon2 * RAD_PER_DEG
 
-		a = (Math.sin(dlat_rad/2))**2 + Math.cos(lat1_rad) * Math.cos(lat2_rad) * (Math.sin(dlon_rad/2))**2
-		c = 2 * Math.atan2( Math.sqrt(a), Math.sqrt(1-a))
 
-		(Rkm * c).round(2)
+		dist = Math.sin(lat1_rad) * Math.sin(lat2_rad) + Math.cos(lat1_rad) * Math.cos(lat2_rad) * Math.cos(dlon_rad)
+		dist = Math.acos(dist) / RAD_PER_DEG * 60 * 1.1515 * 1.609344;
 	end
 end
