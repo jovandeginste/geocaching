@@ -6,7 +6,7 @@ class Cache
 	property :name, String
 	property :owner, String, :required => true
 	property :location, String
-	property :city, String
+	property :geolocation, Json, length: 1024
 	property :longitude, Float
 	property :latitude, Float
 	property :difficulty, Float
@@ -20,6 +20,8 @@ class Cache
 	property :short_desc, Text
 	property :long_desc, Text
 	property :hints, Text
+	property :notes, Text
+	property :local_notes, Text, :length => 1*1024*1024
 
 	belongs_to :cache_size
 	belongs_to :cache_type
@@ -59,7 +61,7 @@ class Cache
 	end
 
 	def as_location
-		Location.new(self.latitude, self.longitude)
+		@location_object ||= Location.new(self.latitude, self.longitude)
 	end
 
 	def distance_from(position)
@@ -85,7 +87,7 @@ class Cache
 		result[:disabled] = !body.find{|line| line.match(/<ul class="OldWarning"><li>This cache is temporarily unavailable/)}.nil?
 
 		result[:latitude], result[:longitude] = body.find{|line| line.match(/var userDefinedCoords/)}.match(/.*"([^"]*)"/)[1].gsub(/' /, "',").split(",").map{|c| Location.convert(c)}
-		result[:city] = Location.new(result[:latitude], result[:longitude]).to_city
+		result[:geolocation] = Location.new(result[:latitude], result[:longitude]).location_drilldown
 		result[:hidden] = (
 			start = body.index{|line| line.match(/"ctl00_ContentBody_mcd2"/)}
 			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
@@ -111,6 +113,7 @@ class Cache
 			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
 			body[start..(start+stop)].map(&:strip).join("\n").strip_tags.strip
 		)
+		result[:notes] = body[body.index{|line| line.match(/id=\"cache_note\"/)} + 1].strip
 		result[:last_update] = DateTime.now
 		result[:found_by_me] = !body.select{|line| line.match(/"ctl00_ContentBody_hlFoundItLog"/)}.empty?
 		result
@@ -139,13 +142,41 @@ class Cache
 		self.add_all_by_guid(request.body.force_encoding("UTF-8").scan(/guid=[[:alnum:]].*/).map{|x| x.gsub(/guid=/, "").gsub(/".*/, "")})
 	end
 	def self.found_by_me
-		self.logged_by_me(2)
+		list = self.logged_by_me(2)
+		list.map{|c| c.update found_by_me: true}
 	end
-	def self.find_near(location)
+	def find_near(pages = 1)
+		self.class.find_near(self.as_location, pages)
+	end
+
+	def self.find_near(location, pages = 1)
 		latitude, longitude = location.latitude, location.longitude
 		url = "/seek/nearest.aspx?lat=#{latitude}&lng=#{longitude}&f=1"
-		request = HttpInterface.get_page(url)
-		body = request.body.force_encoding("UTF-8").scan(/guid=[[:alnum:]].*/).map{|x| x.gsub(/guid=/, "").gsub(/".*/, "")}
+		viewstate = ""
+		viewstate1 = ""
+		results = []
+		pages.times.each do |n|
+			puts "page #{n}"
+			if viewstate.empty?
+				data = {}
+			else
+				data = {
+					"__EVENTTARGET" => "ctl00$ContentBody$pgrTop$lbGoToPage_#{n + 1}",
+					"__EVENTARGUMENT" => "",
+					"__LASTFOCUS" => "",
+					"__VIEWSTATEFIELDCOUNT" => 2,
+					"__VIEWSTATE" => viewstate,
+					"__VIEWSTATE1" => viewstate1,
+				}
+			end
+			request = HttpInterface.post_page(url, data)
+			body = request.body.force_encoding("UTF-8")
+			viewstate = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+			viewstate1 = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE1"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+			results += body.scan(/guid=[[:alnum:]].*/).map{|x| x.gsub(/guid=/, "").gsub(/".*/, "")}
+			puts "results: #{results.size}"
+		end
+		return results
 	end
 
 	def to_gpx
@@ -160,46 +191,103 @@ class Cache
     <groundspeak:cache id="25805" available="#{!self.disabled}" archived="#{self.archived}" xmlns:groundspeak="http://www.groundspeak.com/cache/1/0">
       <groundspeak:name>#{self.name}</groundspeak:name>
       <groundspeak:placed_by>#{self.owner}</groundspeak:placed_by>
-      <groundspeak:owner id="13197">Cip</groundspeak:owner>
+      <groundspeak:owner id="?">#{self.owner}</groundspeak:owner>
       <groundspeak:type>#{self.cache_type.name} Cache</groundspeak:type>
       <groundspeak:container>#{self.cache_size.name}</groundspeak:container>
       <groundspeak:difficulty>#{self.difficulty}</groundspeak:difficulty>
       <groundspeak:terrain>#{self.terrain}</groundspeak:terrain>
-      <groundspeak:country>#{Cache.first.location.split(", ").last}</groundspeak:country>
-      <groundspeak:state>#{Cache.first.location.split(", ").first}</groundspeak:state>
+      <groundspeak:country>#{self.geolocation["country"]}</groundspeak:country>
+      <groundspeak:state>#{self.geolocation["administrative_area_level_2"]}</groundspeak:state>
       <groundspeak:short_description html="True">#{self.short_desc}</groundspeak:short_description>
       <groundspeak:long_description html="True">#{self.long_desc}</groundspeak:long_description>
       <groundspeak:encoded_hints>#{self.hints.rot13}</groundspeak:encoded_hints>
     </groundspeak:cache>
   </wpt>].force_encoding("UTF-8")
 	end
-end
+	def solved_location
+		self.full_notes.match(/#OPL#/) ? location = Location.new(self.full_notes.split("\n").find{|l| l.match(/#OPL#/)}.gsub(/#OPL#[[:space:]]*/, "")) : nil
+	end
 
-class String
-	def remove_tags
-		self.gsub(/<[^>]*>/, '')
+	def file_name_template
+		File.join [
+			"#{self.geolocation["country"]} - #{self.geolocation["administrative_area_level_1"]}",
+			self.geolocation["administrative_area_level_2"],
+				"#{self.geolocation["locality"]} - #{self.name} - #{self.gcid}",
+		].map{|p| p.transliterate.gsub(/[^-[:alnum:]_]+/, "_")}
 	end
-	def strip_tags
-		self.sub(/^<[^>]*>/, "").sub(/<[^>]*>$/, "")
+
+	def full_export
+		start = File.join(Export.file_root(self), self.file_name_template)
+		dir = File.dirname(start)
+		FileUtils.mkdir_p(dir) unless File.directory?(dir)
+
+		pdf = "#{start}.pdf"
+		Export.to_file(self, pdf, :pdf)
+		notes = "#{start}.txt"
+		Export.to_file(self, notes, :notes)
 	end
-	def remove_spaces
-		self.gsub(/[[:space:]]/, '')
+
+	def files
+		start = File.join(Export.file_root(self), self.file_name_template)
+		["#{start}.pdf"] + ((self.notes.empty? and self.local_notes.empty?) ? [] : ["#{start}.txt"])
 	end
-	def substitude_urls
-		self.gsub(/src=(["'])([^h][^t][^t][^p][^s]?[^:])/, 'src=\1http://www.geocaching.com/seek/\2').gsub(/\/seek\/\//, "/").gsub(/\/seek\/\.\.\//, "/")
+	def current_extra_directories
+		%x[find #{Export.all_file_roots.join(" ")} -type d -name '*_-_#{self.gcid}'].split("\n")
 	end
-	def rot13
-		self.rot(13)
+	def current_files
+		%x[find #{Export.all_file_roots.join(" ")} -type f -name '*_-_#{self.gcid}.*'].split("\n")
 	end
-	def rot(nr = 13)
-		self.each_byte.map do |byte|
-			case byte
-			when 97..122
-				byte = ((byte - 97 + nr) % 26) + 97
-			when 65..90
-				byte = ((byte - 65 + nr) % 26) + 65
+	def files_to_remove
+		self.current_files - self.files
+	end
+	def remove_obsolete_files
+		self.files_to_remove.each{|file|
+			File.delete(file)
+		}
+	end
+
+	def edit_notes
+		notes = self.local_notes
+		self.local_notes = (notes.nil? ?  String.new_from_editor : notes.edit)
+		self.save
+	end
+	def extra_directory
+		File.join(Export.file_root(self), self.file_name_template)
+	end
+
+	def make_extra_directory
+		extra_dir = self.extra_directory
+		FileUtils.mkdir_p(extra_dir) unless File.directory?(extra_dir)
+	end
+
+	def update_files
+		self.remove_obsolete_files
+		self.full_export
+		current_dir = self.current_extra_directories
+		unless current_dir.empty?
+			extra_dir = self.extra_directory
+			unless current_dir.include?(extra_dir)
+				self.make_extra_directory
 			end
-			byte
-		end.pack('c*')
+			(current_dir - [extra_dir]).each{|dir|
+				%x[mv -v #{dir}/* #{extra_dir}/]
+				FileUtils.rm_rf(dir)
+			}
+		end
+		nil
+	end
+
+	def import_local_notes
+		notes_file = %x[find /home/jo/Dropbox/GC_done/ /home/jo/Dropbox/autosync/GC/ -name *_-_#{self.gcid}.txt].split("\n")
+		if notes_file.size >= 1
+			notes = notes_file.map{|f| File.read(f).encode('UTF-16le', :invalid => :replace, :replace => ' ').encode('UTF-8')}.join("\n")
+			self.local_notes = notes
+			self.save
+		end
+		self.local_notes
+	end
+
+	def full_notes
+		(self.notes.empty? ? "" : self.notes + "\n") + (self.local_notes.empty? ? "" : self.local_notes + "\n")
 	end
 end

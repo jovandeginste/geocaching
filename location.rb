@@ -1,4 +1,6 @@
 require 'geocoder'
+Geocoder::Configuration.language = :nl
+Geocoder::Configuration.timeout = 60
 
 class Location
 	Rkm = 6371
@@ -14,20 +16,42 @@ class Location
 		"#{self.latitude}, #{self.longitude}"
 	end
 
-	def to_city
-		geo_result = Geocoder.search("#{self.latitude}, #{self.longitude}")
-		city = geo_result.collect{|a| a.address_components_of_type("locality").first}.compact.first
-		city.nil? ? "NO_CITY" : city["short_name"]
+	def city
+		self.location_drilldown["locality"] || "NO_CITY"
+	end
+
+	def province
+		self.location_drilldown["administrative_area_level_2"] || "NO_PROVINCE"
+	end
+
+	def area
+		self.location_drilldown["administrative_area_level_1"] || "NO_AREA"
+	end
+
+	def country
+		self.location_drilldown["country"] || "NO_COUNTRY"
+	end
+
+	def geocode
+		@geocode ||= Geocoder.search("#{self.latitude}, #{self.longitude}")
+	end
+
+	def location_drilldown
+		self.geocode.first.address_components.inject({}){|h, i| h[i["types"].first] = i["long_name"]; h}
 	end
 
 	def parse(*params)
 		latitude, longitude = case params.size 
 				      when 1
 					      loc = params.first
-					      splitter = [",", ";", "-"].find do |possible_splitter|
-						      loc.count(possible_splitter) == 1
+					      if loc.match(/[NSZ].*[EOW].*/)
+						      loc.scan(/[NSZEOW][^NSZEOW]*/)
+					      else
+						      splitter = [",", ";", "-"].find do |possible_splitter|
+							      loc.count(possible_splitter) == 1
+						      end
+						      loc.split(splitter)
 					      end
-					      loc.split(splitter)
 				      when 2
 					      params
 				      end

@@ -40,19 +40,19 @@ class HttpInterface
 			authuri = "/login/default.aspx?redir=%2fdefault.aspx%3f"
 			credentials = {
 				"RESETCOMPLETE" => "Y",
-				"redir" => "http%3a%2f%2fwww.geocaching.com%2fdefault.aspx%3f",
+				"redir" => "http://www.geocaching.com/default.aspx?",
 				"__EVENTTARGET" => "",
 				"__EVENTARGUMENT" => "",
 				"__VIEWSTATE" => "",
 				"__PREVIOUSPAGE" => "Kz_QjFpkXxJ0V2-727Am3pSAtsCKPUapMQA-xu1p5mQCR6mH0bNiCeWfFpXklcRnE-aZ8-XLAR2_kOC8l-nRlYp7y781",
-				"ctl00%24tbUsername" => self.credentials[:username],
-				"ctl00%24tbPassword" => self.credentials[:password],
-				"ctl00%24btnSignIn" => "Sign+In",
-				"ctl00%24ContentBody%24tbSearch" => "postal+code%2C+country%2C+etc",
+				"ctl00$tbUsername" => self.credentials[:username],
+				"ctl00$tbPassword" => self.credentials[:password],
+				"ctl00$btnSignIn" => "Sign In",
+				"ctl00$ContentBody$tbSearch" => "postal code, country, etc",
 			}
 
 			# We doen een post naar 'authuri' om in te loggen met de credentials
-			resp = self.https_instance.post(authuri, credentials.map{|x, y| "#{x}=#{y}"}.join("&"))
+			resp = self.https_instance.post(authuri, URI.encode_www_form(credentials))
 			# 302 is redirect (naar destination => resturi), dus success
 			if resp.code == "302"
 				self.headers["Cookie"] = "#{resp.response['set-cookie'].split('; ')[0]};"
@@ -74,12 +74,12 @@ class HttpInterface
 			   else
 				   self.https_instance
 			   end
-		resp = instance.post(page, data.map{|x, y| "#{x}=#{y}"}.join("&"), self.headers)
+		resp = instance.post(page, URI.encode_www_form(data), self.headers)
 		if !self.is_authenticated?(resp.body)
 			if !self.authentication
 				posts "Authentication failed!"
 			end
-			resp = instance.post(page, data.map{|x, y| "#{x}=#{y}"}.join("&"), self.headers)
+			resp = instance.post(page, URI.encode_www_form(data), self.headers)
 		end
 		resp
 	end
