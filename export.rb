@@ -2,13 +2,10 @@ require 'htmlentities'
 
 class Export
 	def self.file_root_hash
-		{
-			found:  "/home/jo/Dropbox/GC_new/found",
-			archived: "/home/jo/Dropbox/GC_new/archived",
-			disabled: "/home/jo/Dropbox/GC_new/disabled",
-			default: "/home/jo/Dropbox/GC_new/default",
-			gpx: "/home/jo/Dropbox/GC_new/gpx",
-		}
+		@file_root_hash ||= {}
+	end
+	def self.file_root_hash=(hash)
+		@file_root_hash = hash
 	end
 
 	def self.file_root(cache)
