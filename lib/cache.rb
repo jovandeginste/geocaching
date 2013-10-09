@@ -1,3 +1,5 @@
+require 'htmlentities'
+
 class Cache
 	include DataMapper::Resource
 	property :id,   Serial
@@ -14,6 +16,7 @@ class Cache
 	property :archived, Boolean
 	property :disabled, Boolean
 	property :found_by_me, Boolean
+	property :found_date, Date
 	property :hidden, Date
 	property :last_update, DateTime
 	property :content, Text, :length => 1*1024*1024
@@ -31,6 +34,26 @@ class Cache
 		if self.last_update.nil? or DateTime.now > self.last_update + 30
 			self.update_from_site
 		end
+	end
+
+	def to_s
+		"#{self.name} (#{
+			[
+				self.cache_type.name,
+				self.cache_size.name,
+				self.difficulty,
+				self.terrain,
+				self.gcid,
+				self.disabled ? "disabled" : nil,
+				self.archived ? "archived" : nil,
+				self.geolocation.nil? ? nil : self.geolocation["locality"],
+			].compact.join(";")})"
+	end
+
+	def self.add_all_by_gcid(list)
+		list.map{|gcid|
+			Cache.find_or_create(gcid: gcid)
+		}
 	end
 
 	def self.add_all_by_guid(list)
@@ -52,12 +75,15 @@ class Cache
 	def update_from_site
 		self.attributes = self.data_from_site
 		self.update_content_from_site
+		self.get_images
 	end
 
 	def update_from_site!
+		puts "Updating database: #{self.to_s}"
 		self.update self.data_from_site
 		self.update_content_from_site
 		self.save
+		self.get_images
 	end
 
 	def as_location
@@ -68,8 +94,13 @@ class Cache
 		self.as_location.distance_from(position)
 	end
 
+	def body
+		@body ||= self.get_html
+	end
+
 	def data_from_site
-		body = self.get_html
+		puts "Updating: #{self.gcid}; #{self.guid}"
+		body = self.body
 
 		result = {}
 		result[:guid] = body.find{|line| line.match(/"ctl00_ContentBody_uxLogbookLink"/)}.match(/guid=([[:alnum:]-]*)"/)[1]
@@ -86,8 +117,13 @@ class Cache
 		result[:archived] = !body.find{|line| line.match(/<ul class="OldWarning"><li>This cache has been archived/)}.nil?
 		result[:disabled] = !body.find{|line| line.match(/<ul class="OldWarning"><li>This cache is temporarily unavailable/)}.nil?
 
-		result[:latitude], result[:longitude] = body.find{|line| line.match(/var userDefinedCoords/)}.match(/.*"([^"]*)"/)[1].gsub(/' /, "',").split(",").map{|c| Location.convert(c)}
-		result[:geolocation] = Location.new(result[:latitude], result[:longitude]).location_drilldown
+		result[:latitude], result[:longitude] = body.find{|line| line.match(/id="uxLatLon"/)}.remove_tags.strip.gsub(/ E/, ",E").split(",").map{|c| Location.convert(c)}
+
+		if self.geolocation.nil? or self.last_update < DateTime.now - 30
+			puts "Updating geolocation information for #{result[:gcid]} - #{result[:name]}"
+			new_geolocation = Location.new(result[:latitude], result[:longitude]).location_drilldown
+			result[:geolocation] = new_geolocation if new_geolocation
+		end
 		result[:hidden] = (
 			start = body.index{|line| line.match(/"ctl00_ContentBody_mcd2"/)}
 			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
@@ -115,12 +151,38 @@ class Cache
 		)
 		result[:notes] = body[body.index{|line| line.match(/id=\"cache_note\"/)} + 1].strip
 		result[:last_update] = DateTime.now
-		result[:found_by_me] = !body.select{|line| line.match(/"ctl00_ContentBody_hlFoundItLog"/)}.empty?
+		result[:found_by_me] = !body.select{|line| line.match(/<strong id="ctl00_ContentBody_GeoNav_logText">Found It!<\/strong>/)}.empty?
+		result[:found_by_me] ||= !body.select{|line| line.match(/<strong id="ctl00_ContentBody_GeoNav_logText">Attended<\/strong>/)}.empty?
+		result[:found_date] = result[:found_by_me] ? (
+			body.find{|line| line.match(/"ctl00_ContentBody_GeoNav_logDate"/)}.remove_tags.gsub(/.* on: /, "").gsub(/\./, "").remove_spaces
+		) : nil
 		result
 	end
 
+	def get_images
+		body = self.body
+		encoder = HTMLEntities.new
+		if images = body.find{|l| l.match(/rel="lightbox"/)}
+			self.make_extra_directory
+			images.strip.split(/<\/?li>/).each{|image|
+				next unless m = image.match(/.*<a href="([^"]*)"[^>]*>([^>]*)<\/a>.*/)
+				url, name = m[1..2] 
+				name = encoder.decode(name).transliterate.gsub(/[^-[:alnum:]_]+/, "_")
+				ext = url.gsub(/.*\./, "")
+				file_name = File.join(self.extra_directory, "#{name}.#{ext}")
+				puts "Downloading #{url} as #{file_name}"
+				content = %x[curl --connect-timeout 5 "#{url}"]
+				current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
+				if current != content
+					puts "Updating file '#{file_name}' for: #{self}"
+					File.open(file_name, 'w') { |file| file.write(content) }
+				end
+			}
+		end
+	end
+
 	def update_content_from_site
-		url = "http://www.geocaching.com/seek/cdpf.aspx?guid=#{self.guid}&lc=10"
+		url = "/seek/cdpf.aspx?guid=#{self.guid}&lc=10"
 		request = HttpInterface.get_page(url)
 		body = request.body.force_encoding("UTF-8").substitude_urls
 		self.content = body.gsub(/<script.*?<\/script>/m, "")
@@ -142,8 +204,11 @@ class Cache
 		self.add_all_by_guid(request.body.force_encoding("UTF-8").scan(/guid=[[:alnum:]].*/).map{|x| x.gsub(/guid=/, "").gsub(/".*/, "")})
 	end
 	def self.found_by_me
-		list = self.logged_by_me(2)
-		list.map{|c| c.update found_by_me: true}
+		puts "Searching caches found by me"
+		list = self.logged_by_me(2) + self.logged_by_me(10) + self.logged_by_me(11)
+		list.uniq.map{|c|
+			c.update found_by_me: true
+		}
 	end
 	def find_near(pages = 1)
 		self.class.find_near(self.as_location, pages)
@@ -173,14 +238,14 @@ class Cache
 			body = request.body.force_encoding("UTF-8")
 			viewstate = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
 			viewstate1 = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE1"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
-			results += body.scan(/guid=[[:alnum:]].*/).map{|x| x.gsub(/guid=/, "").gsub(/".*/, "")}
+			results += body.scan(/\/geocache\/GC[-_[:alnum:]].*/).map{|x| x.gsub(/.*\/geocache\//, "").gsub(/_.*/, "")}
 			puts "results: #{results.size}"
 		end
 		return results
 	end
 
 	def to_gpx
-%Q[  <wpt lat="#{self.latitude}" lon="#{self.longitude}">
+		%Q[  <wpt lat="#{self.latitude}" lon="#{self.longitude}">
     <time>#{self.hidden.to_datetime}</time>
     <name>#{self.gcid}</name>
     <desc>#{self.name}, #{self.cache_type.name} (#{self.difficulty}/#{self.terrain})</desc>
@@ -196,8 +261,6 @@ class Cache
       <groundspeak:container>#{self.cache_size.name}</groundspeak:container>
       <groundspeak:difficulty>#{self.difficulty}</groundspeak:difficulty>
       <groundspeak:terrain>#{self.terrain}</groundspeak:terrain>
-      <groundspeak:country>#{self.geolocation["country"]}</groundspeak:country>
-      <groundspeak:state>#{self.geolocation["administrative_area_level_2"]}</groundspeak:state>
       <groundspeak:short_description html="True">#{self.short_desc}</groundspeak:short_description>
       <groundspeak:long_description html="True">#{self.long_desc}</groundspeak:long_description>
       <groundspeak:encoded_hints>#{self.hints.rot13}</groundspeak:encoded_hints>
@@ -209,11 +272,15 @@ class Cache
 	end
 
 	def file_name_template
-		File.join [
-			"#{self.geolocation["country"]} - #{self.geolocation["administrative_area_level_1"]}",
-			self.geolocation["administrative_area_level_2"],
-				"#{self.geolocation["locality"]} - #{self.name} - #{self.gcid}",
-		].map{|p| p.transliterate.gsub(/[^-[:alnum:]_]+/, "_")}
+		if self.geolocation.nil?
+			File.join ["Unknown", "Unknown - #{self.name} - #{self.gcid}"].map{|p| p.transliterate.gsub(/[^-[:alnum:]_]+/, "_")}
+		else
+			File.join [
+				"#{self.geolocation["country"]} - #{self.geolocation["administrative_area_level_1"]}",
+				self.geolocation["administrative_area_level_2"],
+					"#{self.geolocation["locality"]} - #{self.name} - #{self.gcid}",
+			].map{|p| p.transliterate.gsub(/[^-[:alnum:]_]+/, "_")}
+		end
 	end
 
 	def full_export
@@ -242,7 +309,10 @@ class Cache
 	end
 	def remove_obsolete_files
 		self.files_to_remove.each{|file|
-			File.delete(file)
+			begin
+				File.delete(file)
+			rescue
+			end
 		}
 	end
 
@@ -258,6 +328,7 @@ class Cache
 	def make_extra_directory
 		extra_dir = self.extra_directory
 		FileUtils.mkdir_p(extra_dir) unless File.directory?(extra_dir)
+		extra_dir
 	end
 
 	def update_files

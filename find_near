@@ -1,0 +1,56 @@
+#!/usr/local/rvm/rubies/ruby-2.0.0-p0/bin/ruby
+
+require 'net/http'
+require 'dm-core'
+require 'dm-migrations'
+require 'dm-mysql-adapter'
+require 'dm-ar-finders'
+require 'dm-types'
+
+STDOUT.sync = true
+
+settings = YAML.load_file("settings.yaml")
+database = settings[:database]
+geocaching = settings[:geocaching]
+paths = settings[:paths]
+
+DataMapper.setup(:default, database)
+
+DataMapper::Inflector.inflections do |inflect|
+	inflect.singular 'caches', 'cache'
+end
+
+Dir.glob('./lib/*.rb').each{|f| load "./#{f}"}
+
+DataMapper.auto_upgrade!
+
+HttpInterface.credentials = geocaching
+Export.file_root_hash = paths
+
+location = ARGV.shift
+pages = (ARGV.shift || "1").to_i
+
+puts "Find caches near '#{location}'"
+if location.match(/^GC/)
+	c = Cache.find_or_create(gcid: location)
+	puts "Using cache #{c}"
+	unless c.nil?
+		Cache.add_all_by_gcid c.find_near(pages)
+	end
+else
+	l = Location.new(location)
+	puts "Using coördinates: #{l}"
+	unless l.nil?
+		Cache.add_all_by_gcid Cache.find_near(l, pages)
+	end
+end
+
+puts "Export gpx files"
+Export.gpx_collections
+
+puts "Export pdfs and notes (for changed caches)"
+Cache.all(:last_update.gt => DateTime.now - 1).each{|c|
+	c.update_files
+}
+
+nil

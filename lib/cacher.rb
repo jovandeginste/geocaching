@@ -38,10 +38,9 @@ class Cacher
 		matrix = {}
 		(0..8).each{|d|
 			rd = 1 + d.to_f / 2
-			matrix[rd] = {}
 			(0..8).each{|t|
 				rt = 1 + t.to_f / 2
-				matrix[rd][rt] = Cache.all(found_by_me: true, difficulty: rd, terrain: rt).size
+				matrix[[rd, rt]] = Cache.all(found_by_me: true, difficulty: rd, terrain: rt).size
 			}
 		}
 		return matrix

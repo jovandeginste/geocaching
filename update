@@ -1,0 +1,87 @@
+#!/usr/local/rvm/rubies/ruby-2.0.0-p0/bin/ruby
+
+require 'net/http'
+require 'dm-core'
+require 'dm-migrations'
+require 'dm-mysql-adapter'
+require 'dm-ar-finders'
+require 'dm-types'
+
+STDOUT.sync = true
+
+settings = YAML.load_file("settings.yaml")
+database = settings[:database]
+geocaching = settings[:geocaching]
+paths = settings[:paths]
+
+DataMapper.setup(:default, database)
+
+DataMapper::Inflector.inflections do |inflect|
+	inflect.singular 'caches', 'cache'
+end
+
+Dir.glob('./lib/*.rb').each{|f| load "./#{f}"}
+
+DataMapper.auto_upgrade!
+
+HttpInterface.credentials = geocaching
+Export.file_root_hash = paths
+
+puts "Define some things"
+auto_update = CacheList.first(name: "auto update")
+local_caches = []
+
+puts "Update list of caches found by me (and fetch caches not yet in database)"
+Cache.found_by_me
+
+puts "Update caches that I found, but that don't have a found date yet (probably found today)"
+Cache.all(found_by_me: true, found_date: nil).first(50).each{|c|
+	c.update_from_site!
+}
+
+puts "Update recent finds (but not too recent)"
+Cache.all(found_by_me: true, :last_update.lt => DateTime.now - 1, :found_date.gt => DateTime.now - 3).each{|c|
+	c.update_from_site!
+}
+
+puts "Update caches with no geolocation"
+Cache.all(geolocation: nil).first(50).each{|c|
+	c.update_from_site!
+}
+
+puts "Update auto-update list"
+auto_update.update_caches_from_site
+
+puts "Update extended list of caches near Oud-Heverlee"
+local_caches += Cache.add_all_by_gcid Cache.find_near(Location.oud_heverlee, 4)
+
+puts "Update list of caches near Leuven"
+local_caches += Cache.add_all_by_gcid Cache.find_near(Location.leuven, 2)
+
+puts "Update list of caches near Wijgmaal"
+local_caches += Cache.add_all_by_gcid Cache.find_near(Location.wijgmaal, 2)
+
+puts "Update old caches on auto-update list (oldest 20):"
+auto_update.caches.all(:last_update.lt => DateTime.now - 5, :order => :last_update).first(20).each{|c|
+	c.update_from_site!
+}
+
+puts "Update old local caches (oldest 20):"
+Cache.all(id: local_caches.map(&:id), :last_update.lt => DateTime.now - 7, :archived => false, :order => :last_update).first(20).each{|c|
+	c.update_from_site!
+}
+
+puts "Update remaining old caches in database (oldest 20):"
+Cache.all(:last_update.lt => DateTime.now - 60, :order => :last_update).first(20).each{|c|
+	c.update_from_site!
+}
+
+puts "Export gpx files"
+Export.gpx_collections
+
+puts "Export pdfs and notes (for changed caches)"
+Cache.all(:last_update.gt => DateTime.now - 1).each{|c|
+	c.update_files
+}
+
+nil

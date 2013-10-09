@@ -1,6 +1,6 @@
 require 'geocoder'
 Geocoder::Configuration.language = :nl
-Geocoder::Configuration.timeout = 60
+Geocoder::Configuration.timeout = 10
 
 class Location
 	Rkm = 6371
@@ -33,11 +33,17 @@ class Location
 	end
 
 	def geocode
+		tries = 0
 		@geocode ||= Geocoder.search("#{self.latitude}, #{self.longitude}")
+		while @geocode.empty? and tries < 10
+			tries += 1
+			@geocode = Geocoder.search("#{self.latitude}, #{self.longitude}")
+		end
+		@geocode
 	end
 
 	def location_drilldown
-		self.geocode.first.address_components.inject({}){|h, i| h[i["types"].first] = i["long_name"]; h}
+		self.geocode.first ? self.geocode.first.address_components.inject({}){|h, i| h[i["types"].first] = i["long_name"]; h} : nil
 	end
 
 	def parse(*params)
@@ -75,6 +81,9 @@ class Location
 	def self.leuven
 		self.city(:leuven)
 	end
+	def self.wijgmaal
+		self.city(:wijgmaal)
+	end
 	def self.city(city)
 		city_coordinates = case city.downcase
 				   when :oud_heverlee
@@ -85,6 +94,8 @@ class Location
 					   "N 51 12.841, E 3 15.500"
 				   when :overpelt
 					   "N 51 12.571, E 5 23.154"
+				   when :wijgmaal
+					   "50.930603, 4.6968913"
 				   end
 		Location.new(city_coordinates)
 	end

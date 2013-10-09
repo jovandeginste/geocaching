@@ -72,6 +72,7 @@ class Export
 		else
 			current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
 			if current != content
+				puts "Updating file '#{file_type}' for: #{cache.to_s}"
 				File.open(file_name, 'w') { |file| file.write(content) }
 			end
 		end
@@ -86,7 +87,7 @@ class Export
 			"events" => %w[event mega-event],
 		}
 
-		caches = Cache.all(found_by_me: false).group_by{|c|
+		caches = Cache.all(found_by_me: false, archived: false, disabled: false, :geolocation.not => nil).group_by{|c|
 			[
 				c.geolocation["country"] || "NO_COUNTRY",
 				c.geolocation["administrative_area_level_1"] || "NO_AREA",
@@ -107,7 +108,7 @@ class Export
 		}
 
 		name = ["oplossingen"]
-		caches = Cache.all(found_by_me: false).select{|c| c.full_notes.match(/#OPL#/)}
+		caches = Cache.all(found_by_me: false, archived: false).select{|c| c.full_notes.match(/#OPL#/)}
 
 			file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
 		current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
@@ -128,19 +129,12 @@ class Export
   xmlns="http://www.topografix.com/GPX/1/0"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
 			#{caches.collect{|c|
-			name = encoder.encode("#{c.name} (#{
-			[
-				c.cache_type.name,
-				c.cache_size.name,
-				c.difficulty,
-				c.terrain,
-				c.gcid
-			].join(";")})")
+			name = encoder.encode(c.to_s)
 			%Q[
 <wpt lat="#{c.solved_location.latitude}" lon="#{c.solved_location.longitude}">
-  <name>#{name}</name>
-  <cmt>#{name}</cmt>
-  <desc>#{name}</desc>
+  <name>#{name} (oplossing)</name>
+  <cmt>#{name} (oplossing)</cmt>
+  <desc>#{name} (oplossing)</desc>
 </wpt>]}.join}
 </gpx>
 		].strip + "\n"
@@ -156,14 +150,7 @@ class Export
   xmlns="http://www.topografix.com/GPX/1/0"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
 			#{caches.collect{|c|
-			name = encoder.encode("#{c.name} (#{
-			[
-				c.cache_type.name,
-				c.cache_size.name,
-				c.difficulty,
-				c.terrain,
-				c.gcid
-			].join(";")})")
+			name = encoder.encode(c.to_s)
 			%Q[
 <wpt lat="#{c.latitude}" lon="#{c.longitude}">
   <name>#{name}</name>

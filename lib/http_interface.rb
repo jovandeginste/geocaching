@@ -40,7 +40,7 @@ class HttpInterface
 			authuri = "/login/default.aspx?redir=%2fdefault.aspx%3f"
 			credentials = {
 				"RESETCOMPLETE" => "Y",
-				"redir" => "http://www.geocaching.com/default.aspx?",
+				"redir" => "https://www.geocaching.com/default.aspx?",
 				"__EVENTTARGET" => "",
 				"__EVENTARGUMENT" => "",
 				"__VIEWSTATE" => "",
@@ -59,6 +59,7 @@ class HttpInterface
 			else
 				false
 			end
+			puts "Authenticated!"
 			resp
 		end
 	end
@@ -74,7 +75,15 @@ class HttpInterface
 			   else
 				   self.https_instance
 			   end
-		resp = instance.post(page, URI.encode_www_form(data), self.headers)
+		resp = nil
+		until resp
+			begin
+				resp = instance.post(page, URI.encode_www_form(data), self.headers)
+			rescue Errno::ECONNRESET
+				puts "Connection reset - try again!"
+				sleep 0.3
+			end
+		end
 		if !self.is_authenticated?(resp.body)
 			if !self.authentication
 				posts "Authentication failed!"
@@ -94,7 +103,21 @@ class HttpInterface
 			   else
 				   self.https_instance
 			   end
-		resp = instance.get(page, self.headers)
+		resp = nil
+		until resp
+			begin
+				resp = instance.get(page, self.headers)
+			rescue Errno::ECONNRESET
+				puts "Connection reset - try again!"
+				sleep 0.3
+			end
+		end
+		resp = case resp
+		       when Net::HTTPSuccess     then resp
+		       when Net::HTTPRedirection then self.get_page(resp['location'], proto)
+		       else
+			       resp
+		       end
 		if !self.is_authenticated?(resp.body)
 			if !self.authentication
 				puts "Authentication failed!"

@@ -1,0 +1,37 @@
+#!/usr/local/rvm/rubies/ruby-2.0.0-p0/bin/ruby
+
+require 'net/http'
+require 'dm-core'
+require 'dm-migrations'
+require 'dm-mysql-adapter'
+require 'dm-ar-finders'
+require 'dm-types'
+
+settings = YAML.load_file("settings.yaml")
+database = settings[:database]
+geocaching = settings[:geocaching]
+paths = settings[:paths]
+
+DataMapper.setup(:default, database)
+
+DataMapper::Inflector.inflections do |inflect|
+	inflect.singular 'caches', 'cache'
+end
+
+Dir.glob('./lib/*.rb').each{|f| load "./#{f}"}
+
+DataMapper.auto_upgrade!
+
+HttpInterface.credentials = geocaching
+Export.file_root_hash = paths
+
+age = (ENV["AGE"] || "7").to_i
+
+ARGV.each{|gc|
+	puts "Getting: #{gc}"
+	c = Cache.find_or_create(gcid: gc)
+	puts "Making dir for: #{c}"
+	puts c.make_extra_directory
+}
+
+nil

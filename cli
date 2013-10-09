@@ -1,0 +1,3 @@
+#!/bin/bash
+
+pry -f -e "load 'testing.rb'"

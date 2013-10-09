@@ -54,4 +54,8 @@ class CacheList
 		request = HttpInterface.get_page(url)
 		request.body.force_encoding("UTF-8").split("\r\n")
 	end
+
+	def to_s
+		"#{self.name} (#{self.guid})"
+	end
 end
