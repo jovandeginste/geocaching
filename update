@@ -61,18 +61,18 @@ local_caches += Cache.add_all_by_gcid Cache.find_near(Location.leuven, 2)
 puts "Update list of caches near Wijgmaal"
 local_caches += Cache.add_all_by_gcid Cache.find_near(Location.wijgmaal, 2)
 
-puts "Update old caches on auto-update list (oldest 20):"
-auto_update.caches.all(:last_update.lt => DateTime.now - 5, :order => :last_update).first(20).each{|c|
+puts "Update old caches on auto-update list (oldest 10):"
+auto_update.caches.all(:last_update.lt => DateTime.now - 5, :order => :last_update).first(10).each{|c|
 	c.update_from_site!
 }
 
-puts "Update old local caches (oldest 20):"
-Cache.all(id: local_caches.map(&:id), :last_update.lt => DateTime.now - 7, :archived => false, :order => :last_update).first(20).each{|c|
+puts "Update old local caches (oldest 10):"
+Cache.all(id: local_caches.map(&:id), :last_update.lt => DateTime.now - 7, :archived => false, :order => :last_update).first(10).each{|c|
 	c.update_from_site!
 }
 
-puts "Update remaining old caches in database (oldest 20):"
-Cache.all(:last_update.lt => DateTime.now - 60, :order => :last_update).first(20).each{|c|
+puts "Update remaining old caches in database (oldest 10):"
+Cache.all(:last_update.lt => DateTime.now - 60, :order => :last_update).first(10).each{|c|
 	c.update_from_site!
 }
 
