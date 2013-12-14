@@ -39,8 +39,7 @@ class HttpInterface
 			puts "Authenticating..."
 			authuri = "/login/default.aspx?redir=%2fdefault.aspx%3f"
 			credentials = {
-				"RESETCOMPLETE" => "Y",
-				"redir" => "https://www.geocaching.com/default.aspx?",
+				"redir" => "/default.aspx?",
 				"__EVENTTARGET" => "",
 				"__EVENTARGUMENT" => "",
 				"__VIEWSTATE" => "",
@@ -55,7 +54,7 @@ class HttpInterface
 			resp = self.https_instance.post(authuri, URI.encode_www_form(credentials))
 			# 302 is redirect (naar destination => resturi), dus success
 			if resp.code == "302"
-				self.headers["Cookie"] = "#{resp.response['set-cookie'].split('; ')[0]};"
+				self.headers["Cookie"] = resp.response['set-cookie'].split(/,[[:space:]]*/).join("; ")
 			else
 				false
 			end
@@ -114,7 +113,13 @@ class HttpInterface
 		end
 		resp = case resp
 		       when Net::HTTPSuccess     then resp
-		       when Net::HTTPRedirection then self.get_page(resp['location'], proto)
+		       when Net::HTTPRedirection then
+			       location = resp['location']
+			       if location.match(/^https?:\/\//)
+				       proto, location = location.split("://") 
+				       location = location.gsub(/^[^\/]+/, "")
+			       end
+			       return self.get_page(location, proto)
 		       else
 			       resp
 		       end
