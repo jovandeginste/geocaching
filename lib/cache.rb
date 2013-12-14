@@ -76,6 +76,7 @@ class Cache
 		self.attributes = self.data_from_site
 		self.update_content_from_site
 		self.get_images
+		self
 	end
 
 	def update_from_site!
@@ -84,6 +85,7 @@ class Cache
 		self.update_content_from_site
 		self.save
 		self.get_images
+		self
 	end
 
 	def as_location
