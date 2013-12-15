@@ -14,6 +14,7 @@ class Cache
 	property :difficulty, Float
 	property :terrain, Float
 	property :archived, Boolean
+	property :archived_date, Date
 	property :disabled, Boolean
 	property :found_by_me, Boolean
 	property :found_date, Date
@@ -34,6 +35,9 @@ class Cache
 		if self.last_update.nil? or DateTime.now > self.last_update + 30
 			self.update_from_site
 		end
+	end
+	before :destroy do
+		self.remove_all_files
 	end
 
 	def to_s
@@ -117,6 +121,12 @@ class Cache
 		result[:location] = body.find{|line| line.match(/"ctl00_ContentBody_Location"/)}.remove_tags.strip.gsub(/^In */, "").gsub(/[^-_[:alnum:]]\+/, "_")
 
 		result[:archived] = !body.find{|line| line.match(/<ul class="OldWarning"><li>This cache has been archived/)}.nil?
+		case [result[:archived], self.archived_date.nil?]
+		when [true, true]
+			result[:archived_date] = Date.today
+		when [false, false]
+			result[:archived_date] = nil
+		end
 		result[:disabled] = !body.find{|line| line.match(/<ul class="OldWarning"><li>This cache is temporarily unavailable/)}.nil?
 
 		result[:latitude], result[:longitude] = body.find{|line| line.match(/id="uxLatLon"/)}.remove_tags.strip.gsub(/ E/, ",E").split(",").map{|c| Location.convert(c)}
@@ -308,6 +318,20 @@ class Cache
 	end
 	def files_to_remove
 		self.current_files - self.files
+	end
+	def remove_all_files
+		self.current_files.each{|file|
+			begin
+				File.delete(file)
+			rescue
+			end
+		}
+		self.current_extra_directories.each{|file|
+			begin
+				FileUtils.rm_r(file)
+			rescue
+			end
+		}
 	end
 	def remove_obsolete_files
 		self.files_to_remove.each{|file|

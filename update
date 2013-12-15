@@ -76,6 +76,14 @@ Cache.all(:last_update.lt => DateTime.now - 60, :order => :last_update).first(10
 	c.update_from_site!
 }
 
+puts "Update purge candidates (limit 30):"
+Cache.all(found_by_me: false, archived: true, :archived_date.lt => DateTime.now - 59, :last_update.lt => DateTime.now - 10, :ordr => :last_update).first(10).each{|c|
+	c.update_from_site!
+}
+
+puts "Destroying long-time archived caches:"
+Cache.all(found_by_me: false, archived: true, :archived_date.lt => DateTime.now - 80, :last_update.gt => DateTime.now - 10).destroy
+
 puts "Export gpx files"
 Export.gpx_collections
 
