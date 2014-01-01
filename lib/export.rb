@@ -103,6 +103,7 @@ class Export
 			current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
 			new_content = self.to_osmand(caches)
 			if current != new_content
+				puts "Updating gpx: #{name}"
 				File.open(file_name, 'w') { |file| file.write(new_content) }
 			end
 		}
@@ -114,6 +115,7 @@ class Export
 		current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
 		new_content = self.to_solved_osmand(caches)
 		if current != new_content
+			puts "Updating gpx: #{name}"
 			File.open(file_name, 'w') { |file| file.write(new_content) }
 		end
 		nil
