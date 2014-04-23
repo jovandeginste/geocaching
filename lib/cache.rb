@@ -6,9 +6,9 @@ class Cache
 	property :gcid, String, :unique => true, :required => true
 	property :guid, String, :unique => true, :required => true
 	property :name, String
-	property :owner, String, :required => true
+	property :owner, String, :required => true, :length => 128
 	property :location, String
-	property :geolocation, Json, length: 1024
+	property :geolocation, Json, :length => 1024
 	property :longitude, Float
 	property :latitude, Float
 	property :difficulty, Float
@@ -145,7 +145,7 @@ class Cache
 			start = body.index{|line| line.match(/"ctl00_ContentBody_mcd1"/)}
 			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
 			body[start..(start+stop)].join.gsub(/A cache by/, "").remove_tags.remove_spaces
-		)
+		).first(128)
 		result[:short_desc] = (
 			start = body.index{|line| line.match(/"ctl00_ContentBody_ShortDescription"/)}
 			stop = body[start..-1].index{|line| line.match(/<\/span>/)}
