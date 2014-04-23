@@ -1,4 +1,4 @@
-#!/usr/local/rvm/rubies/ruby-2.0.0-p0/bin/ruby
+#!/usr/local/rvm/rubies/geocaching/bin/ruby
 
 require 'net/http'
 require 'dm-core'
