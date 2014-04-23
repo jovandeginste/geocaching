@@ -207,7 +207,7 @@ class Cache
 			url = "/seek/cache_details.aspx?guid=" + self.guid
 		end
 		request = HttpInterface.get_page(url)
-		request.body.force_encoding("UTF-8").split("\r\n")
+		request.body.force_encoding("UTF-8").split(/\r?\n/)
 	end
 
 	def self.logged_by_me(filter = nil)

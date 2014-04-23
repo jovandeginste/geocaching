@@ -84,7 +84,7 @@ class Export
 			"trads" => %w[traditional earth],
 			"mysts" => %w[unknown],
 			"multis" => %w[multi wherigo letterbox\ hybrid],
-			"events" => %w[event mega-event],
+			"events" => %w[event mega-event cache\ in\ trash\ out\ event],
 		}
 
 		caches = Cache.all(found_by_me: false, archived: false, disabled: false, :geolocation.not => nil).group_by{|c|
