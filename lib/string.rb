@@ -47,4 +47,7 @@ class String
 		tmp.delete
 		new_string
 	end
+	def first(n)
+		self[0...n]
+	end
 end
