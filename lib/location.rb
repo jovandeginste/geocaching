@@ -84,6 +84,9 @@ class Location
 	def self.wijgmaal
 		self.city(:wijgmaal)
 	end
+	def self.rotselaar
+		self.city(:rotselaar)
+	end
 	def self.city(city)
 		city_coordinates = case city.downcase
 				   when :oud_heverlee
@@ -94,6 +97,8 @@ class Location
 					   "N 51 12.841, E 3 15.500"
 				   when :overpelt
 					   "N 51 12.571, E 5 23.154"
+				   when :rotselaar
+					   "N 50 56.771, E 4 43.467"
 				   when :wijgmaal
 					   "50.930603, 4.6968913"
 				   end

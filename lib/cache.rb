@@ -231,6 +231,7 @@ class Cache
 		url = "/seek/nearest.aspx?lat=#{latitude}&lng=#{longitude}&f=1"
 		viewstate = ""
 		viewstate1 = ""
+		viewstate2 = ""
 		results = []
 		pages.times.each do |n|
 			puts "page #{n}"
@@ -241,15 +242,17 @@ class Cache
 					"__EVENTTARGET" => "ctl00$ContentBody$pgrTop$lbGoToPage_#{n + 1}",
 					"__EVENTARGUMENT" => "",
 					"__LASTFOCUS" => "",
-					"__VIEWSTATEFIELDCOUNT" => 2,
+					"__VIEWSTATEFIELDCOUNT" => 3,
 					"__VIEWSTATE" => viewstate,
 					"__VIEWSTATE1" => viewstate1,
+					"__VIEWSTATE2" => viewstate2,
 				}
 			end
 			request = HttpInterface.post_page(url, data)
 			body = request.body.force_encoding("UTF-8")
 			viewstate = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
 			viewstate1 = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE1"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+			viewstate2 = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE2"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
 			results += body.scan(/\/geocache\/GC[-_[:alnum:]].*/).map{|x| x.gsub(/.*\/geocache\//, "").gsub(/_.*/, "")}
 			puts "results: #{results.size}"
 		end

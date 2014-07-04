@@ -52,8 +52,11 @@ Cache.all(geolocation: nil).first(50).each{|c|
 puts "Update auto-update list"
 auto_update.update_caches_from_site
 
-puts "Update extended list of caches near Oud-Heverlee"
-local_caches += Cache.add_all_by_gcid Cache.find_near(Location.oud_heverlee, 4)
+puts "Update list of caches near Rotselaar"
+local_caches += Cache.add_all_by_gcid Cache.find_near(Location.rotselaar, 4)
+
+puts "Update list of caches near Oud-Heverlee"
+local_caches += Cache.add_all_by_gcid Cache.find_near(Location.oud_heverlee, 2)
 
 puts "Update list of caches near Leuven"
 local_caches += Cache.add_all_by_gcid Cache.find_near(Location.leuven, 2)
