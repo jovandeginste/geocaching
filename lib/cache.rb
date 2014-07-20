@@ -250,9 +250,21 @@ class Cache
 			end
 			request = HttpInterface.post_page(url, data)
 			body = request.body.force_encoding("UTF-8")
-			viewstate = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
-			viewstate1 = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE1"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
-			viewstate2 = body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE2"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+			viewstate = begin
+					    body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+				    rescue
+					    ""
+				    end
+			viewstate1 = begin
+					     body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE1"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+				     rescue
+					     ""
+				     end
+			viewstate2 = begin
+					     body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE2"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+				     rescue
+					     ""
+				     end
 			results += body.scan(/\/geocache\/GC[-_[:alnum:]].*/).map{|x| x.gsub(/.*\/geocache\//, "").gsub(/_.*/, "")}
 			puts "results: #{results.size}"
 		end
