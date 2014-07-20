@@ -87,14 +87,26 @@ class Export
 			"events" => %w[event mega-event cache\ in\ trash\ out\ event],
 		}
 
-		caches = Cache.all(found_by_me: false, archived: false, disabled: false, :geolocation.not => nil).group_by{|c|
+		all_caches = Cache.all(found_by_me: false, archived: false, disabled: false, :geolocation.not => nil)
+		caches = all_caches.group_by{|c|
 			[
 				c.geolocation["country"] || "NO_COUNTRY",
 				c.geolocation["administrative_area_level_1"] || "NO_AREA",
 				c.geolocation["administrative_area_level_2"] || "NO_PROVINCE",
 				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
 			]
-		}
+		}.merge(all_caches.group_by{|c|
+			[
+				c.geolocation["country"] || "NO_COUNTRY",
+				c.geolocation["administrative_area_level_1"] || "NO_AREA",
+				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
+			]
+		}).merge(all_caches.group_by{|c|
+			[
+				c.geolocation["country"] || "NO_COUNTRY",
+				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
+			]
+		})
 
 		location = self.file_root_hash[:gpx]
 		FileUtils.mkdir_p(location) unless File.directory?(location)
