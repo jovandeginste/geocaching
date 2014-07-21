@@ -121,7 +121,7 @@ class Export
 		}
 
 		name = ["oplossingen"]
-		caches = Cache.all(found_by_me: false, archived: false).select{|c| c.full_notes.match(/#OPL#/)}
+		caches = Cache.all(found_by_me: false, archived: false).select(&:solved?)
 
 			file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
 		current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil

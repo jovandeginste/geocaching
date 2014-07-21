@@ -50,6 +50,7 @@ class Cache
 				self.gcid,
 				self.disabled ? "disabled" : nil,
 				self.archived ? "archived" : nil,
+				self.solved? ? "solved" : nil,
 				self.geolocation.nil? ? nil : self.geolocation["locality"],
 			].compact.join(";")})"
 	end
@@ -300,6 +301,9 @@ class Cache
 	end
 	def solved_location
 		self.full_notes.match(/#OPL#/) ? location = Location.new(self.full_notes.split("\n").find{|l| l.match(/#OPL#/)}.gsub(/#OPL#[[:space:]]*/, "")) : nil
+	end
+	def solved?
+		self.full_notes.match(/#OPL#/) ? true : false
 	end
 
 	def file_name_template
