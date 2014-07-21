@@ -81,8 +81,8 @@ class Export
 
 	def self.gpx_collections
 		cache_types = {
-			"trads" => %w[traditional earth],
-			"mysts" => %w[unknown],
+			"trads" => %w[traditional earth traditional\ geo],
+			"mysts" => %w[unknown mystery],
 			"multis" => %w[multi wherigo letterbox\ hybrid],
 			"events" => %w[event mega-event cache\ in\ trash\ out\ event],
 		}
