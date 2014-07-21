@@ -196,7 +196,7 @@ class Cache
 	def update_content_from_site
 		url = "/seek/cdpf.aspx?guid=#{self.guid}&lc=10"
 		request = HttpInterface.get_page(url)
-		body = request.body.force_encoding("UTF-8").substitude_urls
+		body = request.body.force_encoding("UTF-8").substitute_urls
 		self.content = body.gsub(/<script.*?<\/script>/m, "")
 	end
 

@@ -9,7 +9,7 @@ class String
 	def remove_spaces
 		self.gsub(/[[:space:]]/, '')
 	end
-	def substitude_urls
+	def substitute_urls
 		self.gsub(/src=(["'])([^h][^t][^t][^p][^s]?[^:])/, 'src=\1http://www.geocaching.com/seek/\2').gsub(/\/seek\/\//, "/").gsub(/\/seek\/\.\.\//, "/")
 	end
 	def rot13
