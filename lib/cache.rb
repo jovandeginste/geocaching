@@ -161,7 +161,11 @@ class Cache
 			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
 			body[start..(start+stop)].map(&:strip).join("\n").strip_tags.strip
 		)
-		result[:notes] = body[body.index{|line| line.match(/id=\"cache_note\"/)} + 1].strip
+		result[:notes] = (
+			start = body.index{|line| line.match(/id="cache_note"/)}
+			stop = body[start..-1].index{|line| line.match(/<\/span>/)}
+			body[start..(start+stop)].map(&:strip).join("\n").strip_tags.strip
+		)
 		result[:last_update] = DateTime.now
 		result[:found_by_me] = !body.select{|line| line.match(/<strong id="ctl00_ContentBody_GeoNav_logText">Found It!<\/strong>/)}.empty?
 		result[:found_by_me] ||= !body.select{|line| line.match(/<strong id="ctl00_ContentBody_GeoNav_logText">Attended<\/strong>/)}.empty?
