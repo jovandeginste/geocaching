@@ -29,6 +29,7 @@ Export.file_root_hash = paths
 
 location = ARGV.shift
 pages = (ARGV.shift || "1").to_i
+export = ENV["NOEXP"].empty?
 
 puts "Find caches near '#{location}'"
 if location.match(/^GC/)
@@ -45,12 +46,14 @@ else
 	end
 end
 
-puts "Export gpx files"
-Export.gpx_collections
+if export
+	puts "Export gpx files"
+	Export.gpx_collections
 
-puts "Export pdfs and notes (for changed caches)"
-Cache.all(:last_update.gt => DateTime.now - 1).each{|c|
-	c.update_files
-}
+	puts "Export pdfs and notes (for changed caches)"
+	Cache.all(:last_update.gt => DateTime.now - 1).each{|c|
+		c.update_files
+	}
+end
 
 nil

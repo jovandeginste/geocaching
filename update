@@ -75,6 +75,9 @@ Cache.all(id: local_caches.map(&:id), :last_update.lt => DateTime.now - 7, :arch
 }
 
 puts "Update remaining old caches in database (oldest 10):"
+Cache.all(:archived => false, :found_by_me => false, :last_update.lt => DateTime.now - 100, :order => :last_update).first(200).each{|c|
+	c.update_from_site!
+}
 Cache.all(:last_update.lt => DateTime.now - 60, :order => :last_update).first(10).each{|c|
 	c.update_from_site!
 }
