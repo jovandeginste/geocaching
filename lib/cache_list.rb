@@ -52,7 +52,7 @@ class CacheList
 	def get_html
 		url = "/bookmarks/view.aspx?guid=" + self.guid
 		request = HttpInterface.get_page(url)
-		request.body.force_encoding("UTF-8").split("\r\n")
+		request.body.force_encoding("UTF-8").gsub(/\r\n/, "\n").split("\n")
 	end
 
 	def to_s
