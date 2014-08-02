@@ -39,8 +39,6 @@ class Export
 		cache.content
 	end
 	def self.to_pdf(cache)
-		#io = IO.popen("/usr/bin/xvfb-run -w 1 -a /homejo/bin/wkhtmltopdf --page-size A4 --encoding UTF-8 --quiet - - | sed 's/#00//g'", "r+")
-		#io = IO.popen("/usr/bin/xvfb-run -w 1 -a /usr/bin/wkhtmltopdf --page-size A4 --encoding UTF-8 --quiet - -", "r+")
 		io = IO.popen("/usr/bin/iconv -c -f UTF-8 -t LATIN1 | /usr/bin/htmldoc --jpeg=60 --webpage --no-embedfonts --size a4 --no-title --no-toc -t pdf -", "r+")
 		io.puts cache.content.gsub(/style="display:none;"/, "")
 		io.close_write
@@ -88,6 +86,8 @@ class Export
 		}
 
 		all_caches = Cache.all(found_by_me: false, archived: false, disabled: false, :geolocation.not => nil)
+		all_cache_ids = all_caches.collect(&:id)
+
 		caches = all_caches.group_by{|c|
 			[
 				c.geolocation["country"] || "NO_COUNTRY",
@@ -106,6 +106,14 @@ class Export
 				c.geolocation["country"] || "NO_COUNTRY",
 				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
 			]
+		}).merge(CacheList.inject({}){|h, cl|
+			cl.caches.collect(&:cache_type).each{|ct|
+				h[[
+					cl.name,
+					(cache_types.find{|key, values| values.include?(ct.name)} || ["trads"]).first
+				]] = cl.caches.all(id: all_cache_ids, cache_type: ct)
+			}
+			h
 		})
 
 		location = self.file_root_hash[:gpx]
@@ -121,15 +129,28 @@ class Export
 		}
 
 		name = ["oplossingen"]
-		caches = Cache.all(found_by_me: false, archived: false).select(&:solved?)
+		caches = all_caches.select(&:solved?)
 
-			file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
+		file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
 		current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
 		new_content = self.to_solved_osmand(caches)
 		if current != new_content
 			puts "Updating gpx: #{name}"
 			File.open(file_name, 'w') { |file| file.write(new_content) }
 		end
+
+		CacheList.all.each{|cl|
+			name = [cl.name, "oplossingen"]
+			caches = cl.caches.all(id: all_cache_ids).select(&:solved?)
+
+			file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
+			current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
+			new_content = self.to_solved_osmand(caches)
+			if current != new_content
+				puts "Updating gpx: #{name}"
+				File.open(file_name, 'w') { |file| file.write(new_content) }
+			end
+		}
 		nil
 	end
 	def self.to_solved_osmand(caches)
