@@ -27,24 +27,25 @@ DataMapper.auto_upgrade!
 HttpInterface.credentials = geocaching
 Export.file_root_hash = paths
 
-location = ARGV.shift
-pages = (ARGV.shift || "1").to_i
+pages = (ENV["PAGES"] || "1").to_i
 export = ENV["NOEXP"].empty?
 
-puts "Find caches near '#{location}'"
-if location.match(/^GC/)
-	c = Cache.find_or_create(gcid: location)
-	puts "Using cache #{c}"
-	unless c.nil?
-		Cache.add_all_by_gcid c.find_near(pages)
+ARGV.each{|location|
+	puts "Find caches near '#{location}'"
+	if location.match(/^GC/)
+		c = Cache.find_or_create(gcid: location)
+		puts "Using cache #{c}"
+		unless c.nil?
+			Cache.add_all_by_gcid c.find_near(pages)
+		end
+	else
+		l = Location.new(location)
+		puts "Using coördinates: #{l}"
+		unless l.nil?
+			Cache.add_all_by_gcid Cache.find_near(l, pages)
+		end
 	end
-else
-	l = Location.new(location)
-	puts "Using coördinates: #{l}"
-	unless l.nil?
-		Cache.add_all_by_gcid Cache.find_near(l, pages)
-	end
-end
+}
 
 if export
 	puts "Export gpx files"
