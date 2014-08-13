@@ -51,6 +51,7 @@ class Cache
 				self.disabled ? "disabled" : nil,
 				self.archived ? "archived" : nil,
 				self.solved? ? "solved" : nil,
+				self.found_by_me ? "found" : nil,
 				self.geolocation.nil? ? nil : self.geolocation["locality"],
 			].compact.join(";")})"
 	end
