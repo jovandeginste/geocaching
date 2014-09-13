@@ -189,7 +189,7 @@ class Cache
 				ext = url.gsub(/.*\./, "")
 				file_name = File.join(self.extra_directory, "#{name}.#{ext}")
 				puts "Downloading #{url} as #{file_name}"
-				content = %x[curl --connect-timeout 5 "#{url}"]
+				content = %x[curl -fsS --connect-timeout 5 "#{url}"]
 				current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
 				if current != content
 					puts "Updating file '#{file_name}' for: #{self}"
