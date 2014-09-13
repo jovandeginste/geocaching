@@ -39,7 +39,7 @@ class Export
 		cache.content
 	end
 	def self.to_pdf(cache)
-		io = IO.popen("/usr/bin/iconv -c -f UTF-8 -t LATIN1 | /usr/bin/htmldoc --jpeg=60 --webpage --no-embedfonts --size a4 --no-title --no-toc -t pdf -", "r+")
+		io = IO.popen("/usr/bin/iconv -c -f UTF-8 -t LATIN1 | /usr/bin/htmldoc --quiet --jpeg=40 --webpage --no-embedfonts --size a4 --no-title --no-toc -t pdf -", "r+")
 		io.puts cache.content.gsub(/style="display:none;"/, "")
 		io.close_write
 		result = io.read
