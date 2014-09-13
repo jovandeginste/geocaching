@@ -25,16 +25,16 @@ DataMapper.auto_upgrade!
 HttpInterface.credentials = geocaching
 Export.file_root_hash = paths
 
-age = (ENV["AGE"] || "0").to_i
+gc = ARGV.shift
+filename = ARGV.shift
+url = ARGV.shift
 
-ARGV.each{|gc|
-	puts "Getting: #{gc}"
-	c = Cache.find_or_create(gcid: gc)
-	if c.last_update < DateTime.now - age
-		c.update_from_site! 
-		c.update_files
-	end
-}
+puts "Getting: #{gc}"
+c = Cache.find_or_create(gcid: gc)
+puts "Adding #{filename} to #{c}"
+c.make_extra_directory
+puts %Q[curl -fsS '#{url}' > '#{File.join(c.extra_directory, filename)}']
+puts %x[curl -fsS '#{url}' > '#{File.join(c.extra_directory, filename)}']
 
 puts "Export gpx files"
 Export.gpx_collections

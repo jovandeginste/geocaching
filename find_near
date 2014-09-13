@@ -28,6 +28,7 @@ HttpInterface.credentials = geocaching
 Export.file_root_hash = paths
 
 pages = (ENV["PAGES"] || "1").to_i
+age = (ENV["AGE"] || "7").to_i
 export = ENV["NOEXP"].empty?
 
 ARGV.each{|location|
@@ -36,15 +37,22 @@ ARGV.each{|location|
 		c = Cache.find_or_create(gcid: location)
 		puts "Using cache #{c}"
 		unless c.nil?
-			Cache.add_all_by_gcid c.find_near(pages)
+			res = Cache.add_all_by_gcid c.find_near(pages)
 		end
 	else
 		l = Location.new(location)
 		puts "Using coördinates: #{l}"
 		unless l.nil?
-			Cache.add_all_by_gcid Cache.find_near(l, pages)
+			res = Cache.add_all_by_gcid Cache.find_near(l, pages)
 		end
 	end
+	res.each{|c|
+		if c.last_update < DateTime.now - age
+			puts "Updating: #{c}"
+			c.update_from_site! 
+			c.update_files
+		end
+	}
 }
 
 if export

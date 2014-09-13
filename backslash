@@ -7,6 +7,8 @@ require 'dm-mysql-adapter'
 require 'dm-ar-finders'
 require 'dm-types'
 
+STDOUT.sync = true
+
 settings = YAML.load_file("settings.yaml")
 database = settings[:database]
 geocaching = settings[:geocaching]
@@ -25,18 +27,13 @@ DataMapper.auto_upgrade!
 HttpInterface.credentials = geocaching
 Export.file_root_hash = paths
 
-age = (ENV["AGE"] || "0").to_i
-
-ARGV.each{|gc|
-	puts "Getting: #{gc}"
-	c = Cache.find_or_create(gcid: gc)
-	if c.last_update < DateTime.now - age
-		c.update_from_site! 
-		c.update_files
-	end
+todo = (0..8).map{|d|
+	rd = 1 + d.to_f / 2
+	[rd, rd]
 }
 
-puts "Export gpx files"
-Export.gpx_collections
+result = Hash[todo.map{|a, b| ["D#{a}/T#{b}", Cache.all(difficulty: a, terrain: b, found_by_me: false, archived: false).collect(&:to_s)]}]
 
-nil
+result.keys.each{|r|
+
+puts result.to_yaml
