@@ -2,7 +2,7 @@ source'https://rubygems.org'
 
 gem 'addressable'
 gem 'afm'
-gem 'bcrypt-ruby'
+gem 'bcrypt'
 gem 'bigdecimal'
 gem 'bundler'
 gem 'bundler-unload'
