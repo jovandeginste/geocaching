@@ -139,6 +139,16 @@ class Export
 			File.open(file_name, 'w') { |file| file.write(new_content) }
 		end
 
+		found_caches = Cache.all(found_by_me: true, :geolocation.not => nil)
+		name = ["found"]
+		file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
+		current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
+		new_content = self.to_osmand(found_caches)
+		if current != new_content
+			puts "Updating gpx: #{name}"
+			File.open(file_name, 'w') { |file| file.write(new_content) }
+		end
+
 		CacheList.all.each{|cl|
 			name = [cl.name, "oplossingen"]
 			caches = cl.caches.all(id: all_cache_ids).select(&:solved?)
