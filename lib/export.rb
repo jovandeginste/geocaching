@@ -119,50 +119,45 @@ class Export
 		location = self.file_root_hash[:gpx]
 		FileUtils.mkdir_p(location) unless File.directory?(location)
 		caches.each{|name, caches|
+			self.set_file_content(name, caches, false)
 			file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
-			current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
-			new_content = self.to_osmand(caches)
-			if current != new_content
-				puts "Updating gpx: #{name}"
-				File.open(file_name, 'w') { |file| file.write(new_content) }
-			end
 		}
+
+		caches = Cache.all(found_by_me: true, :geolocation.not => nil)
+		name = ["found"]
+		self.set_file_content(name, caches, false)
 
 		name = ["oplossingen"]
 		caches = all_caches.select(&:solved?)
-
-		file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
-		current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
-		new_content = self.to_solved_osmand(caches)
-		if current != new_content
-			puts "Updating gpx: #{name}"
-			File.open(file_name, 'w') { |file| file.write(new_content) }
-		end
-
-		found_caches = Cache.all(found_by_me: true, :geolocation.not => nil)
-		name = ["found"]
-		file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
-		current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
-		new_content = self.to_osmand(found_caches)
-		if current != new_content
-			puts "Updating gpx: #{name}"
-			File.open(file_name, 'w') { |file| file.write(new_content) }
-		end
+		self.set_file_content(name, caches, true)
 
 		CacheList.all.each{|cl|
 			name = [cl.name, "oplossingen"]
 			caches = cl.caches.all(id: all_cache_ids).select(&:solved?)
+			self.set_file_content(name, caches, true)
+		}
+		nil
+	end
 
-			file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
+	def self.set_file_content(name, caches, solved = false)
+		location = self.file_root_hash[:gpx]
+		file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
+		if caches.empty?
+			if File.exist?(file_name)
+				puts "Removing empty gpx: #{name}"
+				File.unlink(file_name)
+			end
+		else
 			current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
-			new_content = self.to_solved_osmand(caches)
+			new_content = solved ? self.to_solved_osmand(caches) : self.to_osmand(caches)
+
 			if current != new_content
 				puts "Updating gpx: #{name}"
 				File.open(file_name, 'w') { |file| file.write(new_content) }
 			end
-		}
-		nil
+		end
 	end
+
 	def self.to_solved_osmand(caches)
 		encoder = HTMLEntities.new
 		return %Q[
