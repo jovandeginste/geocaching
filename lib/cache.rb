@@ -411,4 +411,50 @@ class Cache
 	def full_notes
 		(self.notes.empty? ? "" : self.notes + "\n") + (self.local_notes.empty? ? "" : self.local_notes + "\n")
 	end
+	
+	def waypoints
+		encoder = HTMLEntities.new
+		body = self.body
+		start = body.find_index{|s| s.match(/<table class="Table" id="ctl00_ContentBody_Waypoints">/)}
+		start = start + body[start..-1].find_index{|s| s.match(/<tbody>/)}
+		stop = start + body[start..-1].find_index{|s| s.match(/<\/tbody>/)}
+		slice = body[start..stop]
+		slice.pop
+		slice.shift
+		wp_array = slice.inject([]) do |wp_array, item|
+			if item.match(/<tr/)
+				wp_array << [] 
+			elsif item.match(/<\/tr>/)
+			else
+				wp_array.last << item unless wp_array.last.nil?
+			end
+			wp_array
+		end
+		wp_array.pop
+
+		wp_array = wp_array.inject([]) do |wp_array, item|
+			new_item = item.inject([]) do |new_item, old_item|
+				if old_item.match(/<td/)
+					if l = new_item.pop
+						new_item << l.map{|i| encoder.decode(i).strip}.join("\n").strip
+					end
+					new_item << []
+				elsif old_item.match(/<\/td>/)
+				else
+					new_item.last << old_item unless new_item.last.nil?
+				end
+				new_item
+			end
+			unless new_item[4].nil?
+				wp_array << {
+					name: new_item[4],
+					location: new_item[6],
+					as_location: Location.new(new_item[6]),
+				}
+			end
+			wp_array
+		end
+
+		wp_array
+	end
 end

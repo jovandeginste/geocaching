@@ -50,7 +50,9 @@ class Location
 		latitude, longitude = case params.size 
 				      when 1
 					      loc = params.first
-					      if loc.match(/[NSZ].*[EOW].*/)
+					      if loc.nil?
+						      return nil
+					      elsif loc.match(/[NSZ].*[EOW].*/)
 						      loc.scan(/[NSZEOW][^NSZEOW]*/)
 					      else
 						      splitter = [",", ";", "-"].find do |possible_splitter|
@@ -72,6 +74,7 @@ class Location
 			dec, float = (value.gsub(/,/, ".").gsub(/[^0-9\.]/, "").to_f / 100).divmod(1)
 			result = (value.match(/^[NEO]/) ? 1 : -1) * (dec + (100 * float / 60)).round(6)
 		end
+		return nil if result == 0.0
 		result
 	end
 
@@ -124,5 +127,10 @@ class Location
 
 		dist = Math.sin(lat1_rad) * Math.sin(lat2_rad) + Math.cos(lat1_rad) * Math.cos(lat2_rad) * Math.cos(dlon_rad)
 		dist = Math.acos(dist) / RAD_PER_DEG * 60 * 1.1515 * 1.609344;
+	end
+
+	def is_valid?
+		return false unless self.latitude and self.longitude
+		return true
 	end
 end
