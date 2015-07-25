@@ -1,0 +1,17 @@
+---
+:database:
+ :adapter: 'mysql'
+ :host: 'localhost'
+ :username: 'myuser'
+ :database: 'mydb'
+ :password: 'mypw'
+ :encoding: 'UTF-8'
+:geocaching:
+ :username: "gcusername"
+ :password: "gcpassword"
+:paths:
+ :default: "/path/to/GC/todo"
+ :found:  "/path/to/GC/found"
+ :archived: "/path/to/GC/archived"
+ :disabled: "/path/to/GC/disabled"
+ :gpx: "/path/to/GC/gpx"
