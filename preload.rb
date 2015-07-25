@@ -6,13 +6,15 @@ require 'dm-ar-finders'
 require 'dm-types'
 
 STDOUT.sync = true
+$loglevel ||= ENV['LOGLEVEL']
+$loglevel ||= :info
 
 settings = YAML.load_file("settings.yaml")
 database = settings[:database]
 geocaching = settings[:geocaching]
 paths = settings[:paths]
 
-DataMapper::Logger.new($stdout, :debug)
+DataMapper::Logger.new($stdout, $loglevel)
 DataMapper.setup(:default, database)
 
 DataMapper::Inflector.inflections do |inflect|
