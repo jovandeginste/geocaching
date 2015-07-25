@@ -119,37 +119,36 @@ class Export
 		location = self.file_root_hash[:gpx]
 		FileUtils.mkdir_p(location) unless File.directory?(location)
 		caches.each{|name, caches|
-			self.set_file_content(name, caches, false)
-			file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
+			self.set_file_content(name, self.to_waypoints(caches))
 		}
 
 		caches = Cache.all(found_by_me: true, :geolocation.not => nil)
 		name = ["found"]
-		self.set_file_content(name, caches, false)
+		self.set_file_content(name, self.to_waypoints(caches))
 
 		name = ["oplossingen"]
 		caches = all_caches.select(&:solved?)
-		self.set_file_content(name, caches, true)
+		self.set_file_content(name, self.to_solved_waypoints(caches))
 
 		CacheList.all.each{|cl|
 			name = [cl.name, "oplossingen"]
 			caches = cl.caches.all(id: all_cache_ids).select(&:solved?)
-			self.set_file_content(name, caches, true)
+			self.set_file_content(name, self.to_solved_waypoints(caches))
 		}
 		nil
 	end
 
-	def self.set_file_content(name, caches, solved = false)
+	def self.set_file_content(name, waypoints)
 		location = self.file_root_hash[:gpx]
 		file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
-		if caches.empty?
+		if waypoints.empty?
 			if File.exist?(file_name)
 				puts "Removing empty gpx: #{name}"
 				File.unlink(file_name)
 			end
 		else
 			current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
-			new_content = solved ? self.to_solved_osmand(caches) : self.to_osmand(caches)
+			new_content = self.to_osmand(waypoints)
 
 			if current != new_content
 				puts "Updating gpx: #{name}"
@@ -158,16 +157,23 @@ class Export
 		end
 	end
 
-	def self.to_solved_osmand(caches)
-		caches = caches.sort_by(&:gcid).select{|c| c.solved_location.is_valid?}.inject({}){|hash, c| hash[c.name] = c.solved_location; hash}
-		return _to_osmand(caches)
-	end
-	def self.to_osmand(caches)
-		caches = caches.sort_by(&:gcid).select{|c| c.as_location.is_valid?}.inject({}){|hash, c| hash[c.name] = c.as_location; hash}
-		return _to_osmand(caches)
+	def self.to_solved_waypoints(caches)
+		caches = caches.sort_by(&:gcid).select{|c| c.solved_location.is_valid?}.inject([]) do |array, c|
+			array << {name: c.name, location: c.solved_location}
+			array
+		end
+		return caches
 	end
 
-	def self._to_osmand(caches)
+	def self.to_waypoints(caches)
+		caches = caches.sort_by(&:gcid).select{|c| c.as_location.is_valid?}.inject([]) do |array, c|
+			array << {name: c.name, location: c.as_location}
+			array
+		end
+		return caches
+	end
+
+	def self.to_osmand(caches)
 		encoder = HTMLEntities.new
 		return %Q[
 <?xml version="1.0" encoding="UTF-8"?>
@@ -177,8 +183,9 @@ class Export
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns="http://www.topografix.com/GPX/1/0"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
-		#{caches.collect{|name, location|
-		name = encoder.encode(name.to_s)
+		#{caches.collect{|c|
+		name = encoder.encode(c[:name].to_s)
+		location = c[:location]
 		%Q[
 <wpt lat="#{location.latitude}" lon="#{location.longitude}">
   <name>#{name}</name>
