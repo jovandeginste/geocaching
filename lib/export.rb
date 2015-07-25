@@ -159,27 +159,15 @@ class Export
 	end
 
 	def self.to_solved_osmand(caches)
-		encoder = HTMLEntities.new
-		return %Q[
-<?xml version="1.0" encoding="UTF-8"?>
-<gpx
-  version="1.0"
-  creator="GPSBabel - http://www.gpsbabel.org"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns="http://www.topografix.com/GPX/1/0"
-  xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
-			#{caches.collect{|c|
-			name = encoder.encode(c.to_s)
-			%Q[
-<wpt lat="#{c.solved_location.latitude}" lon="#{c.solved_location.longitude}">
-  <name>#{name} (oplossing)</name>
-  <cmt>#{name} (oplossing)</cmt>
-  <desc>#{name} (oplossing)</desc>
-</wpt>]}.join}
-</gpx>
-		].strip + "\n"
+		caches = caches.sort_by(&:gcid).select{|c| c.solved_location.is_valid?}.inject({}){|hash, c| hash[c.name] = c.solved_location; hash}
+		return _to_osmand(caches)
 	end
 	def self.to_osmand(caches)
+		caches = caches.sort_by(&:gcid).select{|c| c.as_location.is_valid?}.inject({}){|hash, c| hash[c.name] = c.as_location; hash}
+		return _to_osmand(caches)
+	end
+
+	def self._to_osmand(caches)
 		encoder = HTMLEntities.new
 		return %Q[
 <?xml version="1.0" encoding="UTF-8"?>
@@ -189,10 +177,10 @@ class Export
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns="http://www.topografix.com/GPX/1/0"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
-			#{caches.collect{|c|
-			name = encoder.encode(c.to_s)
-			%Q[
-<wpt lat="#{c.latitude}" lon="#{c.longitude}">
+		#{caches.collect{|name, location|
+		name = encoder.encode(name.to_s)
+		%Q[
+<wpt lat="#{location.latitude}" lon="#{location.longitude}">
   <name>#{name}</name>
   <cmt>#{name}</cmt>
   <desc>#{name}</desc>
