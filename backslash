@@ -26,6 +26,7 @@ DataMapper.auto_upgrade!
 
 HttpInterface.credentials = geocaching
 Export.file_root_hash = paths
+Cacher.guid = geocaching[:guid]
 
 todo = (0..8).map{|d|
 	rd = 1 + d.to_f / 2

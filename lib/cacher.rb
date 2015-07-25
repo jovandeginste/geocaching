@@ -10,6 +10,14 @@ class Cacher
 			self.update_from_site
 		end
 	end
+
+	def self.guid
+		@guid ||= {}
+	end
+	def self.guid=(guid)
+		@guid = guid
+	end
+
 	
 	def update_from_site
 		self.attributes = self.data_from_site
@@ -55,7 +63,7 @@ class Cacher
 	end
 
 	def self.me
-		@me ||= Cacher.find_or_create(guid: "526a6b0d-f358-415b-ac85-79148877f15f")
+		@me ||= Cacher.find_or_create(guid: self.guid)
 	end
 
 	def self.my_friends
