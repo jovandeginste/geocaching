@@ -445,16 +445,23 @@ class Cache
 				end
 				new_item
 			end
-			unless new_item[4].nil?
-				wp_array << {
-					name: new_item[4],
-					location: new_item[6],
-					as_location: Location.new(new_item[6]),
-				}
+			if new_item[5]
+				name = "#{new_item[5].remove_tags} - #{self}"
+				location = Location.new(new_item[6])
+				if location.is_valid?
+					wp_array << {
+						name: name,
+						location: location,
+					}
+				end
 			end
 			wp_array
 		end
 
 		wp_array
+	end
+
+	def export_waypoints
+		Export.set_file_content [self.name], self.waypoints
 	end
 end
