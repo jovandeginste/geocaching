@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+
+load 'preload.rb'
+
+age = (ENV["AGE"] || "0").to_i
+
+ARGV.each{|gc|
+	puts "Getting: #{gc}"
+	c = Cache.find_or_create(gcid: gc)
+	if c.last_update < DateTime.now - age
+		c.update_from_site! 
+		c.update_files
+		c.export_waypoints
+	end
+}
+
+puts "Export gpx files"
+Export.gpx_collections
+
+nil
