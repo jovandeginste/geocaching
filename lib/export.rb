@@ -159,7 +159,7 @@ class Export
 
 	def self.to_solved_waypoints(caches)
 		caches = caches.sort_by(&:gcid).select{|c| c.solved_location.is_valid?}.inject([]) do |array, c|
-			array << {name: c.name, location: c.solved_location}
+			array << {name: c.to_s, location: c.solved_location}
 			array
 		end
 		return caches
@@ -167,7 +167,7 @@ class Export
 
 	def self.to_waypoints(caches)
 		caches = caches.sort_by(&:gcid).select{|c| c.as_location.is_valid?}.inject([]) do |array, c|
-			array << {name: c.name, location: c.as_location}
+			array << {name: c.to_s, location: c.as_location}
 			array
 		end
 		return caches
