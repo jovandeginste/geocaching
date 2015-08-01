@@ -151,7 +151,7 @@ class Export
 			new_content = self.to_osmand(waypoints)
 
 			if current != new_content
-				puts "Updating gpx: #{name}"
+				puts "Updating gpx: #{file_name} (#{name}, with #{waypoints.size} points)"
 				File.open(file_name, 'w') { |file| file.write(new_content) }
 			end
 		end
