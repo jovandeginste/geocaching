@@ -91,22 +91,9 @@ class Export
 		caches = all_caches.group_by{|c|
 			[
 				c.geolocation["country"] || "NO_COUNTRY",
-				c.geolocation["administrative_area_level_1"] || "NO_AREA",
-				c.geolocation["administrative_area_level_2"] || "NO_PROVINCE",
 				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
 			]
-		}.merge(all_caches.group_by{|c|
-			[
-				c.geolocation["country"] || "NO_COUNTRY",
-				c.geolocation["administrative_area_level_1"] || "NO_AREA",
-				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
-			]
-		}).merge(all_caches.group_by{|c|
-			[
-				c.geolocation["country"] || "NO_COUNTRY",
-				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
-			]
-		}).merge(CacheList.inject({}){|h, cl|
+		}.merge(CacheList.inject({}){|h, cl|
 			cl.caches.collect(&:cache_type).each{|ct|
 				h[[
 					cl.name,
