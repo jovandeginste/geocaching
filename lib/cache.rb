@@ -20,12 +20,12 @@ class Cache
 	property :found_date, Date
 	property :hidden, Date
 	property :last_update, DateTime
-	property :content, Text, :length => 1*1024*1024
-	property :short_desc, Text
-	property :long_desc, Text
-	property :hints, Text
-	property :notes, Text
-	property :local_notes, Text, :length => 1*1024*1024
+	property :content, Text, :length => 1*1024*1024, :lazy => true
+	property :short_desc, Text, :lazy => true
+	property :long_desc, Text, :lazy => true
+	property :hints, Text, :lazy => true
+	property :notes, Text, :lazy => true
+	property :local_notes, Text, :length => 1*1024*1024, :lazy => true
 
 	belongs_to :cache_size
 	belongs_to :cache_type
@@ -82,6 +82,9 @@ class Cache
 		self.attributes = self.data_from_site
 		self.update_content_from_site
 		self.get_images
+		if self.geolocation.nil? or self.last_update < DateTime.now - 30
+			self.update_geolocation!
+		end
 		self
 	end
 
@@ -91,6 +94,9 @@ class Cache
 		self.update_content_from_site
 		self.save
 		self.get_images
+		if self.geolocation.nil? or self.last_update < DateTime.now - 30
+			self.update_geolocation!
+		end
 		self
 	end
 
@@ -133,11 +139,6 @@ class Cache
 
 		result[:latitude], result[:longitude] = body.find{|line| line.match(/id="uxLatLon"/)}.remove_tags.strip.gsub(/ ([EW])/, ',\1').split(",").map{|c| Location.convert(c)}
 
-		if self.geolocation.nil? or self.last_update < DateTime.now - 30
-			puts "Updating geolocation information for #{result[:gcid]} - #{result[:name]}"
-			new_geolocation = Location.new(result[:latitude], result[:longitude]).location_drilldown
-			result[:geolocation] = new_geolocation if new_geolocation
-		end
 		result[:hidden] = (
 			start = body.index{|line| line.match(/"ctl00_ContentBody_mcd2"/)}
 			stop = body[start..-1].index{|line| line.match(/<\/div>/)}
@@ -462,11 +463,15 @@ class Cache
 	end
 
 	def export_waypoints
-		Export.set_file_content [self.name], self.waypoints
+		if self.waypoints.size > 1
+			Export.set_file_content ["multis", self.name], self.waypoints
+		else
+			puts "'#{self.to_s}' has one waypoint, this seems pointless ..."
+		end
 	end
 
 	def update_geolocation!
-		puts "Updating geolocation information for #{self.gcid} - #{self.name}"
+		puts "Updating geolocation information for '#{self.to_s}'"
 		new_geolocation = Location.new(self.latitude, self.longitude).location_drilldown
 		self.geolocation = new_geolocation if new_geolocation
 		self.save

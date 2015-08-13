@@ -85,19 +85,20 @@ class Export
 			"events" => %w[event mega-event cache\ in\ trash\ out\ event],
 		}
 
-		all_caches = Cache.all(found_by_me: false, archived: false, disabled: false, :geolocation.not => nil)
+		all_caches = Cache.all(found_by_me: false, archived: false, disabled: false, :geolocation.not => nil).preload(Cache.cache_type, Cache.cache_size)
 		all_cache_ids = all_caches.collect(&:id)
 
 		caches = all_caches.group_by{|c|
 			[
 				c.geolocation["country"] || "NO_COUNTRY",
-				(cache_types.find{|key, values| values.include?(c.cache_type.name)} || ["trads"]).first
+				(cache_types.detect{|key, values| values.include?(c.cache_type.name)} || ["trads"])
 			]
 		}.merge(CacheList.inject({}){|h, cl|
-			cl.caches.collect(&:cache_type).each{|ct|
+			cl.caches.preload(Cache.cache_type, Cache.cache_size).collect(&:cache_type).each{|ct|
 				h[[
+					"lists",
 					cl.name,
-					(cache_types.find{|key, values| values.include?(ct.name)} || ["trads"]).first
+					(cache_types.detect{|key, values| values.include?(ct.name)} || ["trads"])
 				]] = cl.caches.all(id: all_cache_ids, cache_type: ct)
 			}
 			h
@@ -109,7 +110,7 @@ class Export
 			self.set_file_content(name, self.to_waypoints(caches))
 		}
 
-		caches = Cache.all(found_by_me: true, :geolocation.not => nil)
+		caches = Cache.all(found_by_me: true, :geolocation.not => nil).preload(Cache.cache_type, Cache.cache_size)
 		name = ["found"]
 		self.set_file_content(name, self.to_waypoints(caches))
 
@@ -119,7 +120,7 @@ class Export
 
 		CacheList.all.each{|cl|
 			name = [cl.name, "oplossingen"]
-			caches = cl.caches.all(id: all_cache_ids).select(&:solved?)
+			caches = cl.caches.all(id: all_cache_ids).preload(Cache.cache_type, Cache.cache_size).select(&:solved?)
 			self.set_file_content(name, self.to_solved_waypoints(caches))
 		}
 		nil
@@ -127,19 +128,26 @@ class Export
 
 	def self.set_file_content(name, waypoints)
 		location = self.file_root_hash[:gpx]
-		file_name = File.join(location, name.join("_").transliterate.gsub(/[^-[:alnum:]_]+/, "_") + ".gpx")
+		sanitized_location = name.flatten.map{|n| n.transliterate.gsub(/[^-[:alnum:]_]+/, "_").gsub(/_$/, "")}
+		sanitized_file = sanitized_location.pop + ".gpx"
+		dir_name = File.join(location, sanitized_location)
+		file_name = File.join(location, sanitized_location, sanitized_file)
+		puts "Filename: #{file_name}"
 		if waypoints.empty?
 			if File.exist?(file_name)
 				puts "Removing empty gpx: #{name}"
 				File.unlink(file_name)
 			end
 		else
+			FileUtils.mkdir_p(dir_name) unless File.directory?(dir_name)
 			current = File.exist?(file_name) ? File.open(file_name, 'r').read : nil
 			new_content = self.to_osmand(waypoints)
 
 			if current != new_content
 				puts "Updating gpx: #{file_name} (#{name}, with #{waypoints.size} points)"
 				File.open(file_name, 'w') { |file| file.write(new_content) }
+			else
+				puts "Skipping gpx: #{file_name} (#{name}, with #{waypoints.size} points) - content is the same"
 			end
 		end
 	end
