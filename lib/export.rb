@@ -91,14 +91,14 @@ class Export
 		caches = all_caches.group_by{|c|
 			[
 				c.geolocation["country"] || "NO_COUNTRY",
-				(cache_types.detect{|key, values| values.include?(c.cache_type.name)} || ["trads"])
+				(cache_types.detect{|key, values| values.include?(c.cache_type.name)}.first || ["trads"])
 			]
 		}.merge(CacheList.inject({}){|h, cl|
 			cl.caches.preload(Cache.cache_type, Cache.cache_size).collect(&:cache_type).each{|ct|
 				h[[
 					"lists",
 					cl.name,
-					(cache_types.detect{|key, values| values.include?(ct.name)} || ["trads"])
+					(cache_types.detect{|key, values| values.include?(ct.name)}.first || ["trads"])
 				]] = cl.caches.all(id: all_cache_ids, cache_type: ct)
 			}
 			h
@@ -119,7 +119,7 @@ class Export
 		self.set_file_content(name, self.to_solved_waypoints(caches))
 
 		CacheList.all.each{|cl|
-			name = [cl.name, "oplossingen"]
+			name = ["lists", cl.name, "oplossingen"]
 			caches = cl.caches.all(id: all_cache_ids).preload(Cache.cache_type, Cache.cache_size).select(&:solved?)
 			self.set_file_content(name, self.to_solved_waypoints(caches))
 		}
