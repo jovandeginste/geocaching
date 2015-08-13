@@ -131,7 +131,7 @@ class Cache
 		end
 		result[:disabled] = !body.find{|line| line.match(/<ul class="OldWarning"><li>This cache is temporarily unavailable/)}.nil?
 
-		result[:latitude], result[:longitude] = body.find{|line| line.match(/id="uxLatLon"/)}.remove_tags.strip.gsub(/ E/, ",E").split(",").map{|c| Location.convert(c)}
+		result[:latitude], result[:longitude] = body.find{|line| line.match(/id="uxLatLon"/)}.remove_tags.strip.gsub(/ ([EW])/, ',\1').split(",").map{|c| Location.convert(c)}
 
 		if self.geolocation.nil? or self.last_update < DateTime.now - 30
 			puts "Updating geolocation information for #{result[:gcid]} - #{result[:name]}"
@@ -463,5 +463,12 @@ class Cache
 
 	def export_waypoints
 		Export.set_file_content [self.name], self.waypoints
+	end
+
+	def update_geolocation!
+		puts "Updating geolocation information for #{self.gcid} - #{self.name}"
+		new_geolocation = Location.new(self.latitude, self.longitude).location_drilldown
+		self.geolocation = new_geolocation if new_geolocation
+		self.save
 	end
 end
