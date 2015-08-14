@@ -463,11 +463,16 @@ class Cache
 	end
 
 	def export_waypoints
-		if self.waypoints.size > 1
-			Export.set_file_content ["multis", self.name], self.waypoints
-		else
-			puts "'#{self.to_s}' has one waypoint, this seems pointless ..."
+		if self.found_by_me
+			# This should remove the gpx file:
+			Export.set_file_content ["multis", self.name], []
+			return
 		end
+		if self.waypoints.size == 1
+			puts "'#{self.to_s}' has one waypoint, this seems pointless ..."
+			return
+		end
+		Export.set_file_content ["multis", self.name], self.waypoints
 	end
 
 	def update_geolocation!
