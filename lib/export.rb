@@ -129,7 +129,8 @@ class Export
 	def self.set_file_content(name, waypoints)
 		location = self.file_root_hash[:gpx]
 		sanitized_location = name.flatten.map{|n| n.transliterate.gsub(/[^-[:alnum:]_]+/, "_").gsub(/_$/, "")}
-		sanitized_file = sanitized_location.pop + ".gpx"
+		sanitized_file = sanitized_location.join("_") + ".gpx"
+		sanitized_location.pop
 		dir_name = File.join(location, sanitized_location)
 		file_name = File.join(location, sanitized_location, sanitized_file)
 		puts "Filename: #{file_name}"

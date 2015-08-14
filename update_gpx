@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+
+load 'preload.rb'
+
+puts "Export gpx files"
+Export.gpx_collections
+
+nil
