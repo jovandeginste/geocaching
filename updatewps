@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+
+load 'preload.rb'
+
+multis = CacheList.first(name: "multis met waypoints")
+multis.update_caches_from_site
+
+caches = multis.caches
+
+puts "We have #{caches.size} caches:"
+caches.each {|c|
+	puts "Generating waypoints for #{c}"
+	c.export_waypoints
+}
+
+nil
