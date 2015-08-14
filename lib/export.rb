@@ -133,7 +133,6 @@ class Export
 		sanitized_location.pop
 		dir_name = File.join(location, sanitized_location)
 		file_name = File.join(location, sanitized_location, sanitized_file)
-		puts "Filename: #{file_name}"
 		if waypoints.empty?
 			if File.exist?(file_name)
 				puts "Removing empty gpx: #{name}"
