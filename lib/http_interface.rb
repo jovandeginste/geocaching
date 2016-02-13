@@ -37,28 +37,30 @@ class HttpInterface
 
 		def authentication
 			puts "Authenticating..."
-			authuri = "/login/default.aspx?redir=%2fdefault.aspx%3f"
+			authuri = "/login/default.aspx?redir=%2fmap%2fdefault.aspx%3f"
 			credentials = {
-				"redir" => "/default.aspx?",
 				"__EVENTTARGET" => "",
 				"__EVENTARGUMENT" => "",
 				"__VIEWSTATE" => "",
-				"__PREVIOUSPAGE" => "Kz_QjFpkXxJ0V2-727Am3pSAtsCKPUapMQA-xu1p5mQCR6mH0bNiCeWfFpXklcRnE-aZ8-XLAR2_kOC8l-nRlYp7y781",
-				"ctl00$tbUsername" => self.credentials[:username],
-				"ctl00$tbPassword" => self.credentials[:password],
-				"ctl00$btnSignIn" => "Sign In",
+				"__VIEWSTATEGENERATOR" => "",
+				#"__PREVIOUSPAGE" => "Kz_QjFpkXxJ0V2-727Am3pSAtsCKPUapMQA-xu1p5mQCR6mH0bNiCeWfFpXklcRnE-aZ8-XLAR2_kOC8l-nRlYp7y781",
+				"ctl00$ContentBody$tbUsername" => self.credentials[:username],
+				"ctl00$ContentBody$tbPassword" => self.credentials[:password],
+				"ctl00$ContentBody$btnSignIn" => "Sign In",
 				"ctl00$ContentBody$tbSearch" => "postal code, country, etc",
+				"_a"=>"_b",
 			}
 
 			# We doen een post naar 'authuri' om in te loggen met de credentials
 			resp = self.https_instance.post(authuri, URI.encode_www_form(credentials))
 			# 302 is redirect (naar destination => resturi), dus success
 			if resp.code == "302"
+				puts "Authenticated!"
 				self.headers["Cookie"] = resp.response['set-cookie'].split(/,[[:space:]]*/).join("; ")
 			else
+				puts "Something went wrong while authenticating..."
 				false
 			end
-			puts "Authenticated!"
 			resp
 		end
 	end
@@ -116,7 +118,7 @@ class HttpInterface
 		       when Net::HTTPRedirection then
 			       location = resp['location']
 			       if location.match(/^https?:\/\//)
-				       proto, location = location.split("://") 
+				       proto, location = location.split("://")
 				       location = location.gsub(/^[^\/]+/, "")
 			       end
 			       return self.get_page(location, proto)
