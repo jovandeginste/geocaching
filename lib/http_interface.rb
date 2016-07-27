@@ -71,11 +71,11 @@ class HttpInterface
 	def self.post_page(page, data, proto = "http")
 		self.authentication if self.headers.empty?
 		instance = case proto
-			   when "http"
-				   self.http_instance
-			   else
-				   self.https_instance
-			   end
+							 when "http"
+								 self.http_instance
+							 else
+								 self.https_instance
+							 end
 		resp = nil
 		until resp
 			begin
@@ -99,11 +99,11 @@ class HttpInterface
 	def self.get_page(page, proto = "http")
 		self.authentication if self.headers.empty?
 		instance = case proto
-			   when "http"
-				   self.http_instance
-			   else
-				   self.https_instance
-			   end
+							 when "http"
+								 self.http_instance
+							 else
+								 self.https_instance
+							 end
 		resp = nil
 		until resp
 			begin
@@ -114,17 +114,17 @@ class HttpInterface
 			end
 		end
 		resp = case resp
-		       when Net::HTTPSuccess     then resp
-		       when Net::HTTPRedirection then
-			       location = resp['location']
-			       if location.match(/^https?:\/\//)
-				       proto, location = location.split("://")
-				       location = location.gsub(/^[^\/]+/, "")
-			       end
-			       return self.get_page(location, proto)
-		       else
-			       resp
-		       end
+					 when Net::HTTPSuccess     then resp
+					 when Net::HTTPRedirection then
+						 location = resp['location']
+						 if location.match(/^https?:\/\//)
+							 proto, location = location.split("://")
+							 location = location.gsub(/^[^\/]+/, "")
+						 end
+						 return self.get_page(location, proto)
+					 else
+						 resp
+					 end
 		if !self.is_authenticated?(resp.body)
 			if !self.authentication
 				puts "Authentication failed!"

@@ -47,22 +47,22 @@ class Location
 	end
 
 	def parse(*params)
-		latitude, longitude = case params.size 
-				      when 1
-					      loc = params.first
-					      if loc.nil?
-						      return nil
-					      elsif loc.match(/[NSZ].*[EOW].*/)
-						      loc.scan(/[NSZEOW][^NSZEOW]*/)
-					      else
-						      splitter = [",", ";", "-"].find do |possible_splitter|
-							      loc.count(possible_splitter) == 1
-						      end
-						      loc.split(splitter)
-					      end
-				      when 2
-					      params
-				      end
+		latitude, longitude = case params.size
+													when 1
+														loc = params.first
+														if loc.nil?
+															return nil
+														elsif loc.match(/[NSZ].*[EOW].*/)
+															loc.scan(/[NSZEOW][^NSZEOW]*/)
+														else
+															splitter = [",", ";", "-"].find do |possible_splitter|
+																loc.count(possible_splitter) == 1
+															end
+															loc.split(splitter)
+														end
+													when 2
+														params
+													end
 		self.latitude = Location.convert(latitude)
 		self.longitude = Location.convert(longitude)
 	end
@@ -92,22 +92,22 @@ class Location
 	end
 	def self.city(city)
 		city_coordinates = case city.downcase
-				   when :oud_heverlee
-					   "N 50 50.255, E 4 39.504"
-				   when :leuven
-					   "N 50 52.39, E 4 42.16"
-				   when :brugge
-					   "N 51 12.841, E 3 15.500"
-				   when :overpelt
-					   "N 51 12.571, E 5 23.154"
-				   when :rotselaar
-					   "N 50 56.771, E 4 43.467"
-				   when :wijgmaal
-					   "50.930603, 4.6968913"
-				   end
+											 when :oud_heverlee
+												 "N 50 50.255, E 4 39.504"
+											 when :leuven
+												 "N 50 52.39, E 4 42.16"
+											 when :brugge
+												 "N 51 12.841, E 3 15.500"
+											 when :overpelt
+												 "N 51 12.571, E 5 23.154"
+											 when :rotselaar
+												 "N 50 56.771, E 4 43.467"
+											 when :wijgmaal
+												 "50.930603, 4.6968913"
+											 end
 		Location.new(city_coordinates)
 	end
-	
+
 	def distance_from(other_location)
 		lat1, lon1 = self.latitude, self.longitude
 		lat2, lon2 = other_location.latitude, other_location.longitude

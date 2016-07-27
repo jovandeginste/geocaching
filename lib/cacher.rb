@@ -18,7 +18,7 @@ class Cacher
 		@guid = guid
 	end
 
-	
+
 	def update_from_site
 		self.attributes = self.data_from_site
 	end

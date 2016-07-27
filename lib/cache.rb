@@ -42,17 +42,17 @@ class Cache
 
 	def to_s
 		"#{self.name} (#{
-			[
-				self.cache_type.name,
-				self.cache_size.name,
-				self.difficulty,
-				self.terrain,
-				self.gcid,
-				self.disabled ? "disabled" : nil,
-				self.archived ? "archived" : nil,
-				self.solved? ? "solved" : nil,
-				self.found_by_me ? "found" : nil,
-				self.geolocation.nil? ? nil : self.geolocation["locality"],
+		[
+			self.cache_type.name,
+			self.cache_size.name,
+			self.difficulty,
+			self.terrain,
+			self.gcid,
+			self.disabled ? "disabled" : nil,
+			self.archived ? "archived" : nil,
+			self.solved? ? "solved" : nil,
+			self.found_by_me ? "found" : nil,
+			self.geolocation.nil? ? nil : self.geolocation["locality"],
 			].compact.join(";")})"
 	end
 
@@ -185,7 +185,7 @@ class Cache
 			self.make_extra_directory
 			images.strip.split(/<\/?li>/).each{|image|
 				next unless m = image.match(/.*<a href="([^"]*)"[^>]*>([^>]*)<\/a>.*/)
-				url, name = m[1..2] 
+				url, name = m[1..2]
 				name = encoder.decode(name).transliterate.gsub(/[^-[:alnum:]_]+/, "_")
 				ext = url.gsub(/.*\./, "")
 				file_name = File.join(self.extra_directory, "#{name}.#{ext}")
@@ -255,23 +255,23 @@ class Cache
 					"__VIEWSTATE2" => viewstate2,
 				}
 			end
-			request = HttpInterface.post_page(url, data)
+			request = HttpInterface.post_page(url, data, 'https')
 			body = request.body.force_encoding("UTF-8")
 			viewstate = begin
-					    body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
-				    rescue
-					    ""
-				    end
+										body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+									rescue
+										""
+									end
 			viewstate1 = begin
-					     body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE1"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
-				     rescue
-					     ""
-				     end
+										 body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE1"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+									 rescue
+										 ""
+									 end
 			viewstate2 = begin
-					     body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE2"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
-				     rescue
-					     ""
-				     end
+										 body.split("\r\n").select{|l| l.match(/id="__VIEWSTATE2"/)}.first.gsub(/.*value="/, "").gsub(/".*/, "")
+									 rescue
+										 ""
+									 end
 			results += body.scan(/\/geocache\/GC[-_[:alnum:]].*/).map{|x| x.gsub(/.*\/geocache\//, "").gsub(/_.*/, "")}
 			puts "results: #{results.size}"
 		end
@@ -280,26 +280,26 @@ class Cache
 
 	def to_gpx
 		%Q[  <wpt lat="#{self.latitude}" lon="#{self.longitude}">
-    <time>#{self.hidden.to_datetime}</time>
-    <name>#{self.gcid}</name>
-    <desc>#{self.name}, #{self.cache_type.name} (#{self.difficulty}/#{self.terrain})</desc>
-    <url>http://www.geocaching.com/seek/cache_details.aspx?guid=#{self.guid}</url>
-    <urlname>#{self.name}</urlname>
-    <sym>Geocache</sym>
-    <type>Geocache|#{self.cache_type.name} Cache</type>
-    <groundspeak:cache id="25805" available="#{!self.disabled}" archived="#{self.archived}" xmlns:groundspeak="http://www.groundspeak.com/cache/1/0">
-      <groundspeak:name>#{self.name}</groundspeak:name>
-      <groundspeak:placed_by>#{self.owner}</groundspeak:placed_by>
-      <groundspeak:owner id="?">#{self.owner}</groundspeak:owner>
-      <groundspeak:type>#{self.cache_type.name} Cache</groundspeak:type>
-      <groundspeak:container>#{self.cache_size.name}</groundspeak:container>
-      <groundspeak:difficulty>#{self.difficulty}</groundspeak:difficulty>
-      <groundspeak:terrain>#{self.terrain}</groundspeak:terrain>
-      <groundspeak:short_description html="True">#{self.short_desc}</groundspeak:short_description>
-      <groundspeak:long_description html="True">#{self.long_desc}</groundspeak:long_description>
-      <groundspeak:encoded_hints>#{self.hints.rot13}</groundspeak:encoded_hints>
-    </groundspeak:cache>
-  </wpt>].force_encoding("UTF-8")
+		<time>#{self.hidden.to_datetime}</time>
+		<name>#{self.gcid}</name>
+		<desc>#{self.name}, #{self.cache_type.name} (#{self.difficulty}/#{self.terrain})</desc>
+		<url>http://www.geocaching.com/seek/cache_details.aspx?guid=#{self.guid}</url>
+		<urlname>#{self.name}</urlname>
+		<sym>Geocache</sym>
+		<type>Geocache|#{self.cache_type.name} Cache</type>
+		<groundspeak:cache id="25805" available="#{!self.disabled}" archived="#{self.archived}" xmlns:groundspeak="http://www.groundspeak.com/cache/1/0">
+			<groundspeak:name>#{self.name}</groundspeak:name>
+			<groundspeak:placed_by>#{self.owner}</groundspeak:placed_by>
+			<groundspeak:owner id="?">#{self.owner}</groundspeak:owner>
+			<groundspeak:type>#{self.cache_type.name} Cache</groundspeak:type>
+			<groundspeak:container>#{self.cache_size.name}</groundspeak:container>
+			<groundspeak:difficulty>#{self.difficulty}</groundspeak:difficulty>
+			<groundspeak:terrain>#{self.terrain}</groundspeak:terrain>
+			<groundspeak:short_description html="True">#{self.short_desc}</groundspeak:short_description>
+			<groundspeak:long_description html="True">#{self.long_desc}</groundspeak:long_description>
+			<groundspeak:encoded_hints>#{self.hints.rot13}</groundspeak:encoded_hints>
+		</groundspeak:cache>
+	</wpt>].force_encoding("UTF-8")
 	end
 	def solved_location
 		self.full_notes.match(/#OPL#/) ? location = Location.new(self.full_notes.split("\n").find{|l| l.match(/#OPL#/)}.gsub(/#OPL#[[:space:]]*/, "")) : nil
@@ -315,7 +315,7 @@ class Cache
 			File.join [
 				"#{self.geolocation["country"]} - #{self.geolocation["administrative_area_level_1"]}",
 				self.geolocation["administrative_area_level_2"],
-					"#{self.geolocation["locality"]} - #{self.name} - #{self.gcid}",
+				"#{self.geolocation["locality"]} - #{self.name} - #{self.gcid}",
 			].map{|p| p.transliterate.gsub(/[^-[:alnum:]_]+/, "_")}
 		end
 	end
@@ -412,7 +412,7 @@ class Cache
 	def full_notes
 		(self.notes.empty? ? "" : self.notes + "\n") + (self.local_notes.empty? ? "" : self.local_notes + "\n")
 	end
-	
+
 	def waypoints
 		encoder = HTMLEntities.new
 		body = self.body
@@ -424,7 +424,7 @@ class Cache
 		slice.shift
 		wp_array = slice.inject([]) do |wp_array, item|
 			if item.match(/<tr/)
-				wp_array << [] 
+				wp_array << []
 			elsif item.match(/<\/tr>/)
 			else
 				wp_array.last << item unless wp_array.last.nil?
